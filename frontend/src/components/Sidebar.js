@@ -39,7 +39,9 @@ const categoryConfig = [
   { name: 'Repartos', icon: Package, route: 'repartos', color: 'text-orange-500' },
   { name: 'Compras', icon: ShoppingCart, route: 'compras', color: 'text-purple-500' },
   { name: 'Kilos/Litros', icon: Scale, route: 'kilos-litros', color: 'text-cyan-500' },
-  { name: 'Contactos', icon: Users, route: 'contactos', color: 'text-pink-500' }
+  { name: 'Contactos', icon: Users, route: 'contactos', color: 'text-pink-500' },
+  { name: 'Días Festivos', icon: Calendar, route: 'dias-festivos', color: 'text-red-500' },
+  { name: 'Restricciones', icon: Clock, route: 'restricciones-horarias', color: 'text-violet-500' }
 ];
 
 const SidebarContent = ({ isCollapsed, onToggle, isMobile = false }) => {
