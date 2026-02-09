@@ -39,6 +39,7 @@ function App() {
           <Route path="/hub/:hubId/liquidaciones" element={<Layout><Liquidaciones /></Layout>} />
           <Route path="/hub/:hubId/compras" element={<Layout><Compras /></Layout>} />
           <Route path="/hub/:hubId/contactos" element={<Layout><Contactos /></Layout>} />
+          <Route path="/hub/:hubId/kilos-litros" element={<Layout><KilosLitros /></Layout>} />
           <Route path="/hub/:hubId/:category" element={<Layout><CategoryGeneric /></Layout>} />
           
           {/* Fallback */}
