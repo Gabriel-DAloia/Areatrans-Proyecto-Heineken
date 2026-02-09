@@ -4,7 +4,7 @@
 Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
 - Sistema de autenticación JWT con admin por defecto
 - Aprobación de usuarios por admin
-- Categorías por Hub: Asistencias, Liquidaciones, Flota, Histórico de incidencias, Repartos, Compras, Kilos/Litros, Contactos
+- Categorías por Hub: Asistencias, Liquidaciones, Flota, Histórico de incidencias, Repartos, Compras, Kilos/Litros, Contactos, Días Festivos, Restricciones Horarias
 - Sistema de Asistencias tipo Excel con control de empleados
 
 ## Arquitectura
@@ -44,7 +44,7 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
 2. **Gestión de Hubs**
    - 6 Hubs por defecto: Puerta Toledo, Dibecesa, Cáceres, Córdoba, Cartagena, Cádiz
    - CRUD de hubs (solo admin)
-   - Cada hub tiene 8 subcategorías
+   - Cada hub tiene 10 subcategorías
 
 3. **Sistema de Asistencias**
    - Tabla tipo Excel con días del mes
@@ -59,10 +59,22 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
    - Registro diario por ruta y repartidor
    - Campos: fecha, ruta, repartidor, clientes, kilos, litros, bultos
    - Resumen mensual total
-   - Resumen por repartidor
-   - Resumen por ruta
-   - Historial del mes
+   - Resumen por repartidor y por ruta
    - Exportación CSV
+
+5. **Días Festivos**
+   - Calendario visual con festivos por ubicación
+   - Festivos nacionales de España precargados (2026)
+   - Festivos autonómicos por comunidad
+   - Festivos locales por ciudad
+   - Posibilidad de agregar/eliminar festivos personalizados
+
+6. **Restricciones Horarias**
+   - Listado de restricciones por zona
+   - Campos: zona, horario, días (L-V, L-S, L-D, S-D), aplica_a, notas
+   - Tipos: Vehículos 0 emisiones, Vehículos de combustible, Todos
+   - CRUD completo
+   - Vista agrupada por tipo de vehículo
 
 ## What's Been Implemented
 
@@ -75,29 +87,25 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
 - [x] CRUD de Hubs
 - [x] Navegación Hub -> Categorías
 - [x] Sistema de Asistencias completo
-  - [x] Tabla tipo Excel
-  - [x] CRUD de empleados
-  - [x] Registro de asistencia por día
-  - [x] Navegación por mes
-  - [x] Resumen mensual
-  - [x] Exportación a Excel
 - [x] Flota - Gestión de vehículos por hub
 - [x] Histórico de Incidencias - Por vehículo con costos
 - [x] Compras - Lista de compras con precios
 - [x] Contactos - Lista de contactos
 - [x] Liquidaciones - Control por ruta con descuadres
-  - [x] CRUD de rutas
-  - [x] Entradas diarias (metálico/ingreso)
-  - [x] Resumen por repartidor
-  - [x] Resumen por ruta
-- [x] **Kilos/Litros** (NUEVO - 09/02/2026)
-  - [x] Registro diario con día, ruta, nombre, clientes, kilos, litros, bultos
-  - [x] Resumen mensual con 4 tarjetas
-  - [x] Tab "Por Repartidor" con agregación
-  - [x] Tab "Por Ruta" con agregación
-  - [x] Tab "Historial del Mes"
-  - [x] Exportación CSV
-  - [x] Navegación por mes
+- [x] **Kilos/Litros** - Tracking de entregas
+- [x] **Días Festivos** (NUEVO)
+  - [x] Calendario visual por mes
+  - [x] 11 festivos nacionales de España 2026
+  - [x] Festivos autonómicos por comunidad (Madrid, Extremadura, Andalucía, Murcia)
+  - [x] Festivos locales por ciudad
+  - [x] Agregar/eliminar festivos personalizados
+  - [x] Resumen anual con conteos por tipo
+- [x] **Restricciones Horarias** (NUEVO)
+  - [x] Listado con zona, horario, días, aplica_a
+  - [x] Tipos: Vehículos 0, Combustible, Todos
+  - [x] CRUD completo (crear, editar, eliminar)
+  - [x] Tarjetas resumen por tipo
+  - [x] Vista agrupada por categoría
 - [x] Diseño responsive con sidebar colapsable
 
 ### ⏳ Pendiente (Backlog)
@@ -106,23 +114,6 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
 - [ ] Notificaciones al aprobar usuarios
 - [ ] Dashboard con gráficos
 - [ ] Finalizar exportación Excel para Asistencias
-
-## Prioridad Features
-
-### P0 (Crítico) ✅
-- Autenticación
-- Sistema de Asistencias
-- Kilos/Litros
-
-### P1 (Alto) ✅
-- Liquidaciones con campos específicos
-- Flota con registro de vehículos
-- Histórico de Incidencias
-
-### P2 (Medio)
-- Repartos con tracking
-- Compras con proveedores
-- Reportes avanzados
 
 ## Credenciales por Defecto
 ```
@@ -140,38 +131,48 @@ Admin: admin@admin.com / admin123
 - GET /api/hubs
 - GET /api/hubs/{hubId}
 - POST /api/hubs
-- PUT /api/hubs/{hubId}
 - DELETE /api/hubs/{hubId}
-
-### Employees
-- GET /api/hubs/{hubId}/employees
-- POST /api/hubs/{hubId}/employees
-- DELETE /api/hubs/{hubId}/employees/{employeeId}
-
-### Attendance
-- GET /api/hubs/{hubId}/attendance?year=YYYY&month=MM
-- POST /api/hubs/{hubId}/attendance
-- GET /api/hubs/{hubId}/attendance/summary
-
-### Routes (shared by Liquidaciones and Kilos/Litros)
-- GET /api/hubs/{hubId}/routes
-- POST /api/hubs/{hubId}/routes
-- DELETE /api/hubs/{hubId}/routes/{routeId}
-
-### Liquidaciones
-- GET /api/hubs/{hubId}/liquidations?year=YYYY&month=MM
-- POST /api/hubs/{hubId}/liquidations
-- POST /api/hubs/{hubId}/liquidations/bulk
-- GET /api/hubs/{hubId}/liquidations/summary
 
 ### Kilos/Litros
 - GET /api/hubs/{hubId}/kilos-litros?year=YYYY&month=MM
 - POST /api/hubs/{hubId}/kilos-litros
-- POST /api/hubs/{hubId}/kilos-litros/bulk
 - DELETE /api/hubs/{hubId}/kilos-litros/{entryId}
 - GET /api/hubs/{hubId}/kilos-litros/summary
 
+### Días Festivos
+- GET /api/hubs/{hubId}/holidays?year=YYYY
+- POST /api/hubs/{hubId}/holidays
+- DELETE /api/hubs/{hubId}/holidays/{holidayId}
+
+### Restricciones Horarias
+- GET /api/hubs/{hubId}/time-restrictions
+- POST /api/hubs/{hubId}/time-restrictions
+- PUT /api/hubs/{hubId}/time-restrictions/{restrictionId}
+- DELETE /api/hubs/{hubId}/time-restrictions/{restrictionId}
+
+## Festivos Precargados (2026)
+
+### Nacionales (11)
+- Año Nuevo (01/01)
+- Epifanía del Señor (06/01)
+- Jueves Santo (02/04)
+- Viernes Santo (03/04)
+- Día del Trabajador (01/05)
+- Asunción de la Virgen (15/08)
+- Fiesta Nacional de España (12/10)
+- Todos los Santos (01/11)
+- Día de la Constitución (06/12)
+- Inmaculada Concepción (08/12)
+- Navidad (25/12)
+
+### Por Ubicación
+- **Madrid**: San José (19/03), Día de la Comunidad (02/05), San Isidro (15/05), Almudena (09/11)
+- **Cáceres**: Día de Extremadura (28/02), San Jorge (23/04)
+- **Córdoba**: Día de Andalucía (28/02), San Rafael (24/05, 24/10)
+- **Cartagena**: Día de Murcia (09/06), Virgen del Carmen (16/07)
+- **Cádiz**: Día de Andalucía (28/02), Nuestra Señora del Rosario (07/10)
+
 ## Next Tasks
-1. Implementar funcionalidad específica para Repartos (pendiente especificaciones del usuario)
-2. Agregar gráficos de estadísticas en el dashboard
-3. Mejorar sistema de exportación con más formatos
+1. Implementar funcionalidad específica para Repartos (pendiente especificaciones)
+2. Dashboard con gráficos y estadísticas
+3. Sistema de notificaciones
