@@ -389,7 +389,7 @@ class HubManagerAPITester:
             self.log_test("Create Record", False, "Missing admin token or hub ID")
             return False
             
-        status_code, response = self.make_request('POST', 'records', {
+        status_code, response = self.make_request('POST', f'hubs/{self.created_hub_id}/records', {
             "hub_id": self.created_hub_id,
             "category": "Asistencias",
             "title": "Test Record API",
@@ -407,11 +407,11 @@ class HubManagerAPITester:
 
     def test_get_records(self):
         """Test getting records"""
-        if not self.admin_token:
-            self.log_test("Get Records", False, "No admin token available")
+        if not self.admin_token or not self.created_hub_id:
+            self.log_test("Get Records", False, "Missing admin token or hub ID")
             return False
             
-        status_code, response = self.make_request('GET', 'records', token=self.admin_token)
+        status_code, response = self.make_request('GET', f'hubs/{self.created_hub_id}/records', token=self.admin_token)
         
         if status_code == 200 and isinstance(response, list):
             self.log_test("Get Records", True, f"Found {len(response)} records", {"count": len(response)})
