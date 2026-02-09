@@ -239,6 +239,53 @@ class KilosLitrosEntryResponse(BaseModel):
     bultos: int
     created_at: str
 
+# Holiday models (Días Festivos)
+class HolidayCreate(BaseModel):
+    hub_id: str
+    date: str  # YYYY-MM-DD
+    name: str
+    type: str  # "nacional", "autonomico", "local"
+
+class HolidayUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+
+class HolidayResponse(BaseModel):
+    id: str
+    hub_id: str
+    date: str
+    name: str
+    type: str
+    created_at: str
+
+# Time Restriction models (Restricciones Horarias)
+RESTRICTION_APPLIES_TO = ["vehiculos_0", "vehiculos_combustible", "todos"]
+
+class TimeRestrictionCreate(BaseModel):
+    hub_id: str
+    zona: str
+    horario: str  # e.g., "7:00 - 10:00 y 18:00 - 21:00"
+    dias: str  # e.g., "L-V", "L-S", "Todos"
+    aplica_a: str  # vehiculos_0, vehiculos_combustible, todos
+    notas: Optional[str] = ""
+
+class TimeRestrictionUpdate(BaseModel):
+    zona: Optional[str] = None
+    horario: Optional[str] = None
+    dias: Optional[str] = None
+    aplica_a: Optional[str] = None
+    notas: Optional[str] = None
+
+class TimeRestrictionResponse(BaseModel):
+    id: str
+    hub_id: str
+    zona: str
+    horario: str
+    dias: str
+    aplica_a: str
+    notas: str
+    created_at: str
+
 # Liquidation models (routes and daily entries)
 class RouteCreate(BaseModel):
     hub_id: str
