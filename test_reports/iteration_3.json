@@ -1,0 +1,89 @@
+{
+  "summary": "Completed comprehensive testing of Días Festivos (Holidays) and Restricciones Horarias (Time Restrictions) features. Both backend APIs and frontend UI tested successfully. All CRUD operations working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Admin login (admin@admin.com / admin123)",
+    "Navigate to Hub Puerta Toledo",
+    "Navigate to Días Festivos page via sidebar",
+    "Verify calendar displays for 2026",
+    "Verify holiday type badges (Nacional, Autonómico, Local) present",
+    "Verify holiday summary shows correct counts (11 Nacionales, 2 Autonómicos, 2 Locales, 15 Total)",
+    "Verify Madrid location detected for Hub Puerta Toledo",
+    "Verify key Madrid holidays present: San José (19/03), Día de la Comunidad de Madrid (02/05), San Isidro (15/05)",
+    "Verify national holidays: Año Nuevo, Epifanía, Jueves Santo, Viernes Santo, Día del Trabajador, Navidad",
+    "Add custom local holiday - toast shows 'Festivo agregado'",
+    "Custom holiday appears in holiday list",
+    "Duplicate date validation works (returns 400)",
+    "Delete custom holiday - verified removed from list",
+    "Navigate to Restricciones Horarias page via sidebar",
+    "Verify Madrid Central restriction exists: 7:00-22:00, L-V, vehiculos_combustible",
+    "Add new restriction with all fields (zona, horario, días, aplica_a, notas)",
+    "Toast shows 'Restricción agregada'",
+    "New restriction appears in table and grouped view",
+    "Edit restriction - horario changed successfully",
+    "Toast shows 'Restricción actualizada'",
+    "Summary cards update correctly (Vehículos 0 emisiones, Vehículos de combustible, Todos los vehículos)",
+    "Delete restriction - toast shows 'Restricción eliminada'",
+    "Summary cards update after delete",
+    "Invalid aplica_a validation works (returns 400)",
+    "Backend: GET /api/hubs/{hub_id}/holidays - 200",
+    "Backend: POST /api/hubs/{hub_id}/holidays - 200",
+    "Backend: DELETE /api/hubs/{hub_id}/holidays/{holiday_id} - 200",
+    "Backend: GET /api/hubs/{hub_id}/time-restrictions - 200",
+    "Backend: POST /api/hubs/{hub_id}/time-restrictions - 200",
+    "Backend: PUT /api/hubs/{hub_id}/time-restrictions/{restriction_id} - 200",
+    "Backend: DELETE /api/hubs/{hub_id}/time-restrictions/{restriction_id} - 200"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_holidays_restrictions.py",
+    "/app/test_reports/pytest/pytest_results_holidays_restrictions.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_holidays_restrictions.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "admin@admin.com",
+    "password": "admin123"
+  },
+  "seed_data_creation": "Madrid Central restriction created: 7:00 - 22:00, L-V, vehiculos_combustible, notes: ZBE Madrid Central",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Two new features fully implemented and working: 1) Días Festivos - Calendar with preset national holidays for Spain 2026 (11), regional holidays for Madrid (2 autonómicos), local Madrid holidays (2 locales). Custom holidays can be added/deleted. Hub Puerta Toledo correctly mapped to Madrid location. 2) Restricciones Horarias - Full CRUD operations. One seeded restriction: Madrid Central (7:00-22:00, L-V, vehiculos_combustible). Summary cards show counts by vehicle type (vehiculos_0, vehiculos_combustible, todos). Grouped view shows restrictions categorized by vehicle type. Both features accessible from sidebar under Hub Puerta Toledo.",
+  "features_tested": {
+    "dias_festivos": {
+      "page_load": "✓ Working",
+      "calendar_display": "✓ Working - Shows monthly calendar with holidays highlighted",
+      "holiday_badges": "✓ Working - Nacional (red), Autonómico (amber), Local (blue)",
+      "holiday_summary": "✓ Working - Shows counts by type and total",
+      "add_custom_holiday": "✓ Working - Form with date picker, name input, type selector",
+      "delete_custom_holiday": "✓ Working - Only non-preset holidays deletable",
+      "year_navigation": "✓ Working - Year selector with prev/next buttons",
+      "month_navigation": "✓ Working - Month selector in calendar view",
+      "preset_holidays": "✓ Working - 11 national + 2 autonómico + 2 local for Madrid"
+    },
+    "restricciones_horarias": {
+      "page_load": "✓ Working",
+      "summary_cards": "✓ Working - Shows counts for each aplica_a category",
+      "restrictions_table": "✓ Working - Shows zona, horario, días, aplica_a, notas columns",
+      "grouped_view": "✓ Working - Shows restrictions grouped by vehicle type",
+      "add_restriction": "✓ Working - Form with zona, horario, días, aplica_a, notas fields",
+      "edit_restriction": "✓ Working - Can update all fields",
+      "delete_restriction": "✓ Working - Removes from list and updates summary",
+      "validation": "✓ Working - Invalid aplica_a values rejected"
+    }
+  }
+}
