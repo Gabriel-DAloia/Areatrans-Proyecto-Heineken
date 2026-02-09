@@ -468,6 +468,16 @@ class HubManagerAPITester:
         self.test_create_hub()
         self.test_update_hub()
         
+        # Employee tests (require existing hub)
+        self.test_get_employees()
+        self.test_create_employee()
+        self.test_update_employee()
+        
+        # Attendance tests (require existing hub and employee)
+        self.test_get_attendance()
+        self.test_save_attendance()
+        self.test_get_attendance_summary()
+        
         # Category tests
         self.test_get_categories()
         
