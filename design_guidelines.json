@@ -1,0 +1,170 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "HubManager",
+      "archetype": "Swiss & High-Contrast",
+      "tone": "Professional, Efficient, Structured, Authoritative",
+      "theme_mode": "light",
+      "language": "es"
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "imports": [
+        "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      ],
+      "scale": {
+        "h1": "text-4xl md:text-5xl font-extrabold tracking-tight",
+        "h2": "text-3xl font-bold tracking-tight",
+        "h3": "text-2xl font-semibold tracking-tight",
+        "p": "text-base leading-relaxed text-slate-600",
+        "label": "text-xs font-bold uppercase tracking-wider text-slate-500",
+        "data": "font-mono text-sm font-medium text-slate-700"
+      }
+    },
+    "colors": {
+      "primary": {
+        "DEFAULT": "#2563EB",
+        "foreground": "#FFFFFF",
+        "hover": "#1D4ED8",
+        "active": "#1E40AF"
+      },
+      "secondary": {
+        "DEFAULT": "#F1F5F9",
+        "foreground": "#0F172A"
+      },
+      "background": {
+        "DEFAULT": "#F8FAFC",
+        "paper": "#FFFFFF"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      },
+      "border": {
+        "DEFAULT": "#E2E8F0",
+        "subtle": "#F1F5F9"
+      }
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "section_gap": "gap-8",
+      "item_gap": "gap-4"
+    },
+    "visual_enhancers": {
+      "radius": "rounded-lg",
+      "shadows": {
+        "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300",
+        "dropdown": "shadow-xl border border-slate-100"
+      },
+      "glass": "backdrop-blur-xl bg-white/80 border border-white/20 shadow-sm",
+      "borders": "border border-slate-200"
+    }
+  },
+  "layout_strategies": {
+    "auth_layout": {
+      "type": "split_screen",
+      "left_panel": {
+        "content": "Abstract 3D logistics/geometric visual",
+        "background_color": "bg-slate-900",
+        "text_color": "text-white"
+      },
+      "right_panel": {
+        "content": "Form container centered",
+        "width": "w-full md:w-1/2 lg:w-[480px]"
+      }
+    },
+    "dashboard_layout": {
+      "structure": "sidebar_with_header",
+      "sidebar": {
+        "width": "w-64",
+        "state": "collapsible",
+        "style": "bg-slate-900 text-slate-300 border-r border-slate-800"
+      },
+      "main_content": {
+        "padding": "p-8",
+        "max_width": "max-w-7xl mx-auto"
+      }
+    },
+    "bento_grid": {
+      "container": "grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 auto-rows-[minmax(180px,auto)] gap-6",
+      "items": {
+        "hero": "col-span-full lg:col-span-4 row-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-8 relative overflow-hidden",
+        "stats": "col-span-1 md:col-span-2 row-span-1 bg-white border border-slate-200 p-6 flex flex-col justify-between hover:border-blue-300 transition-colors",
+        "list": "col-span-full md:col-span-2 lg:col-span-2 row-span-2 bg-white border border-slate-200 p-0 overflow-hidden flex flex-col"
+      }
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-md shadow-sm transition-all active:scale-95",
+      "secondary": "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium px-6 py-2.5 rounded-md shadow-sm transition-all",
+      "ghost": "text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-md transition-colors",
+      "danger": "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+    },
+    "cards": {
+      "default": "bg-white border border-slate-200 rounded-xl overflow-hidden",
+      "interactive": "group cursor-pointer hover:border-blue-400 transition-colors bg-white border border-slate-200 rounded-xl"
+    },
+    "tables": {
+      "header": "bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500 h-12",
+      "row": "border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-16",
+      "cell": "text-sm text-slate-700 px-4"
+    },
+    "inputs": {
+      "default": "h-11 border-slate-200 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all rounded-md text-sm"
+    }
+  },
+  "content_strategy": {
+    "hubs": [
+      "Hub Puerta Toledo",
+      "Dibecesa",
+      "Hub Caceres",
+      "Hub Cordoba",
+      "Hub Cartagena",
+      "Hub Cadiz"
+    ],
+    "categories": [
+      {"name": "Asistencias", "icon": "Wrench", "color": "text-blue-500"},
+      {"name": "Liquidaciones", "icon": "Banknote", "color": "text-emerald-500"},
+      {"name": "Flota", "icon": "Truck", "color": "text-indigo-500"},
+      {"name": "Historico de incidencias", "icon": "History", "color": "text-amber-500"},
+      {"name": "Repartos", "icon": "Package", "color": "text-orange-500"},
+      {"name": "Compras", "icon": "ShoppingCart", "color": "text-purple-500"},
+      {"name": "Kilos/Litros", "icon": "Scale", "color": "text-cyan-500"},
+      {"name": "Contactos", "icon": "Users", "color": "text-pink-500"}
+    ]
+  },
+  "image_urls": {
+    "login_hero": "https://images.unsplash.com/photo-1652594388588-d66d62bc5c29?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHdoaXRlJTIwYmx1ZSUyMGxvZ2lzdGljcyUyMGdlb21ldHJpYyUyMHNoYXBlcyUyMDNkfGVufDB8fHx8MTc3MDY1NTI4Nnww&ixlib=rb-4.1.0&q=85",
+    "logo_placeholder": "https://via.placeholder.com/40"
+  },
+  "motion": {
+    "hover_lift": "hover:-translate-y-1 transition-transform duration-300",
+    "fade_in": "animate-in fade-in duration-500",
+    "slide_up": "animate-in slide-in-from-bottom-4 duration-500"
+  },
+  "accessibility": {
+    "focus_ring": "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+    "contrast_check": "Ensure text-slate-500 is only used for labels, not main text."
+  },
+  "instructions_to_main_agent": {
+    "general": "Do not ask questions. Implement the design using standard React patterns and the provided Shadcn/Tailwind configuration.",
+    "routing": "Use 'react-router-dom' for navigation. Create a layout wrapper for the Dashboard that includes the Sidebar.",
+    "state_management": "Use Context API or simple State for Hub/User management if Redux is not available. Mock API calls if backend is not ready.",
+    "admin_flow": "The 'Admin' user (default) must see a 'Solicitudes' or 'Usuarios' section to approve registrations. Pending users cannot login.",
+    "icons": "Use 'lucide-react' for all icons.",
+    "responsiveness": "Sidebar should become a Drawer/Sheet on mobile. Grid cols should collapse to 1 on mobile."
+  },
+  "UNIVERSAL_GUIDELINES": {
+    "do_not_center_app": "Never center the entire app text. Use natural left alignment.",
+    "typography": "Use Manrope for all Headings (h1-h3). Use Inter for body.",
+    "glass_morphism": "Use sparingly on the Sidebar or Header, but keep main content solid for readability.",
+    "shadows": "Use layered shadows. Do not use flat borders only."
+  }
+}
