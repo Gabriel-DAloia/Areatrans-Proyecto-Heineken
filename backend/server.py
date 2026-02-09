@@ -623,6 +623,238 @@ async def get_attendance_summary(
         "month": month
     }
 
+# ==================== VEHICLE ROUTES (FLOTA) ====================
+
+@api_router.get("/hubs/{hub_id}/vehicles")
+async def get_vehicles(hub_id: str, current_user: dict = Depends(get_current_user)):
+    vehicles = await db.vehicles.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    return [VehicleResponse(
+        id=v["id"],
+        hub_id=v["hub_id"],
+        plate=v["plate"],
+        vehicle_type=v["vehicle_type"],
+        created_at=v["created_at"]
+    ) for v in vehicles]
+
+@api_router.get("/vehicle-types")
+async def get_vehicle_types(current_user: dict = Depends(get_current_user)):
+    return VEHICLE_TYPES
+
+@api_router.post("/hubs/{hub_id}/vehicles", response_model=VehicleResponse)
+async def create_vehicle(hub_id: str, vehicle_data: VehicleCreate, admin: dict = Depends(get_admin_user)):
+    # Verify hub exists
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    # Check if plate already exists
+    existing = await db.vehicles.find_one({"plate": vehicle_data.plate.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="La matrícula ya está registrada")
+    
+    vehicle = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "plate": vehicle_data.plate.upper(),
+        "vehicle_type": vehicle_data.vehicle_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.vehicles.insert_one(vehicle)
+    return VehicleResponse(
+        id=vehicle["id"],
+        hub_id=vehicle["hub_id"],
+        plate=vehicle["plate"],
+        vehicle_type=vehicle["vehicle_type"],
+        created_at=vehicle["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/vehicles/{vehicle_id}", response_model=VehicleResponse)
+async def update_vehicle(hub_id: str, vehicle_id: str, vehicle_data: VehicleUpdate, admin: dict = Depends(get_admin_user)):
+    update_data = {}
+    if vehicle_data.plate is not None:
+        update_data["plate"] = vehicle_data.plate.upper()
+    if vehicle_data.vehicle_type is not None:
+        update_data["vehicle_type"] = vehicle_data.vehicle_type
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.vehicles.update_one(
+        {"id": vehicle_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    
+    vehicle = await db.vehicles.find_one({"id": vehicle_id}, {"_id": 0})
+    return VehicleResponse(
+        id=vehicle["id"],
+        hub_id=vehicle["hub_id"],
+        plate=vehicle["plate"],
+        vehicle_type=vehicle["vehicle_type"],
+        created_at=vehicle["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/vehicles/{vehicle_id}")
+async def delete_vehicle(hub_id: str, vehicle_id: str, admin: dict = Depends(get_admin_user)):
+    result = await db.vehicles.delete_one({"id": vehicle_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    # Also delete related incidents
+    await db.incidents.delete_many({"vehicle_id": vehicle_id})
+    return {"message": "Vehículo eliminado correctamente"}
+
+# ==================== INCIDENT ROUTES (HISTORICO DE INCIDENCIAS) ====================
+
+@api_router.get("/hubs/{hub_id}/incidents")
+async def get_incidents(
+    hub_id: str,
+    vehicle_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {"hub_id": hub_id}
+    if vehicle_id:
+        query["vehicle_id"] = vehicle_id
+    
+    incidents = await db.incidents.find(query, {"_id": 0}).sort("date", -1).to_list(1000)
+    return [IncidentResponse(
+        id=i["id"],
+        vehicle_id=i["vehicle_id"],
+        hub_id=i["hub_id"],
+        title=i["title"],
+        description=i.get("description", ""),
+        date=i["date"],
+        cost=i.get("cost", 0),
+        km=i.get("km", 0),
+        created_at=i["created_at"]
+    ) for i in incidents]
+
+@api_router.get("/hubs/{hub_id}/incidents/summary")
+async def get_incidents_summary(
+    hub_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    # Get all vehicles for this hub
+    vehicles = await db.vehicles.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    
+    # Get current month and year
+    now = datetime.now(timezone.utc)
+    current_month = now.month
+    current_year = now.year
+    
+    # Calculate summaries per vehicle
+    summaries = []
+    for vehicle in vehicles:
+        incidents = await db.incidents.find(
+            {"vehicle_id": vehicle["id"]}, 
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Calculate totals
+        total_cost_month = 0
+        total_cost_year = 0
+        
+        for incident in incidents:
+            cost = incident.get("cost", 0)
+            # Parse date (supports both DD/MM/YYYY and YYYY-MM-DD)
+            date_str = incident.get("date", "")
+            try:
+                if "/" in date_str:
+                    parts = date_str.split("/")
+                    incident_month = int(parts[1])
+                    incident_year = int(parts[2])
+                else:
+                    parts = date_str.split("-")
+                    incident_year = int(parts[0])
+                    incident_month = int(parts[1])
+                
+                if incident_year == current_year:
+                    total_cost_year += cost
+                    if incident_month == current_month:
+                        total_cost_month += cost
+            except:
+                pass
+        
+        summaries.append({
+            "vehicle_id": vehicle["id"],
+            "plate": vehicle["plate"],
+            "vehicle_type": vehicle["vehicle_type"],
+            "total_cost_month": total_cost_month,
+            "total_cost_year": total_cost_year,
+            "incidents_count": len(incidents)
+        })
+    
+    return {
+        "summaries": summaries,
+        "current_month": current_month,
+        "current_year": current_year
+    }
+
+@api_router.post("/hubs/{hub_id}/incidents", response_model=IncidentResponse)
+async def create_incident(hub_id: str, incident_data: IncidentCreate, current_user: dict = Depends(get_current_user)):
+    # Verify vehicle exists
+    vehicle = await db.vehicles.find_one({"id": incident_data.vehicle_id, "hub_id": hub_id})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    
+    incident = {
+        "id": str(uuid.uuid4()),
+        "vehicle_id": incident_data.vehicle_id,
+        "hub_id": hub_id,
+        "title": incident_data.title,
+        "description": incident_data.description or "",
+        "date": incident_data.date,
+        "cost": incident_data.cost or 0,
+        "km": incident_data.km or 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.incidents.insert_one(incident)
+    return IncidentResponse(
+        id=incident["id"],
+        vehicle_id=incident["vehicle_id"],
+        hub_id=incident["hub_id"],
+        title=incident["title"],
+        description=incident["description"],
+        date=incident["date"],
+        cost=incident["cost"],
+        km=incident["km"],
+        created_at=incident["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/incidents/{incident_id}", response_model=IncidentResponse)
+async def update_incident(hub_id: str, incident_id: str, incident_data: IncidentUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in incident_data.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.incidents.update_one(
+        {"id": incident_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Incidencia no encontrada")
+    
+    incident = await db.incidents.find_one({"id": incident_id}, {"_id": 0})
+    return IncidentResponse(
+        id=incident["id"],
+        vehicle_id=incident["vehicle_id"],
+        hub_id=incident["hub_id"],
+        title=incident["title"],
+        description=incident.get("description", ""),
+        date=incident["date"],
+        cost=incident.get("cost", 0),
+        km=incident.get("km", 0),
+        created_at=incident["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/incidents/{incident_id}")
+async def delete_incident(hub_id: str, incident_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.incidents.delete_one({"id": incident_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Incidencia no encontrada")
+    return {"message": "Incidencia eliminada correctamente"}
+
 # ==================== CATEGORIES ====================
 
 CATEGORIES = [
