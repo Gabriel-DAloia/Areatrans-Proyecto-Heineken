@@ -1697,6 +1697,283 @@ async def get_liquidations_summary(
         "by_route": route_summary
     }
 
+# ==================== HOLIDAYS (DÍAS FESTIVOS) ROUTES ====================
+
+# Default national holidays for Spain 2026
+NATIONAL_HOLIDAYS_2026 = [
+    {"date": "2026-01-01", "name": "Año Nuevo", "type": "nacional"},
+    {"date": "2026-01-06", "name": "Epifanía del Señor", "type": "nacional"},
+    {"date": "2026-04-02", "name": "Jueves Santo", "type": "nacional"},
+    {"date": "2026-04-03", "name": "Viernes Santo", "type": "nacional"},
+    {"date": "2026-05-01", "name": "Día del Trabajador", "type": "nacional"},
+    {"date": "2026-08-15", "name": "Asunción de la Virgen", "type": "nacional"},
+    {"date": "2026-10-12", "name": "Fiesta Nacional de España", "type": "nacional"},
+    {"date": "2026-11-01", "name": "Todos los Santos", "type": "nacional"},
+    {"date": "2026-12-06", "name": "Día de la Constitución", "type": "nacional"},
+    {"date": "2026-12-08", "name": "Inmaculada Concepción", "type": "nacional"},
+    {"date": "2026-12-25", "name": "Navidad", "type": "nacional"},
+]
+
+# Local holidays by location
+LOCAL_HOLIDAYS_2026 = {
+    "madrid": [
+        {"date": "2026-03-19", "name": "San José", "type": "autonomico"},
+        {"date": "2026-05-02", "name": "Día de la Comunidad de Madrid", "type": "autonomico"},
+        {"date": "2026-05-15", "name": "San Isidro", "type": "local"},
+        {"date": "2026-11-09", "name": "Nuestra Señora de la Almudena", "type": "local"},
+    ],
+    "caceres": [
+        {"date": "2026-02-28", "name": "Día de Extremadura", "type": "autonomico"},
+        {"date": "2026-04-23", "name": "San Jorge", "type": "local"},
+    ],
+    "cordoba": [
+        {"date": "2026-02-28", "name": "Día de Andalucía", "type": "autonomico"},
+        {"date": "2026-05-24", "name": "San Rafael", "type": "local"},
+        {"date": "2026-10-24", "name": "San Rafael", "type": "local"},
+    ],
+    "cartagena": [
+        {"date": "2026-06-09", "name": "Día de la Región de Murcia", "type": "autonomico"},
+        {"date": "2026-07-16", "name": "Virgen del Carmen", "type": "local"},
+    ],
+    "cadiz": [
+        {"date": "2026-02-28", "name": "Día de Andalucía", "type": "autonomico"},
+        {"date": "2026-10-07", "name": "Nuestra Señora del Rosario", "type": "local"},
+    ],
+}
+
+def get_location_key(hub_name: str) -> str:
+    """Map hub name to location key for holidays"""
+    name_lower = hub_name.lower()
+    if "madrid" in name_lower or "toledo" in name_lower or "dibecesa" in name_lower:
+        return "madrid"
+    elif "caceres" in name_lower or "cáceres" in name_lower:
+        return "caceres"
+    elif "cordoba" in name_lower or "córdoba" in name_lower:
+        return "cordoba"
+    elif "cartagena" in name_lower:
+        return "cartagena"
+    elif "cadiz" in name_lower or "cádiz" in name_lower:
+        return "cadiz"
+    return "madrid"  # default
+
+@api_router.get("/hubs/{hub_id}/holidays")
+async def get_holidays(
+    hub_id: str,
+    year: int,
+    current_user: dict = Depends(get_current_user)
+):
+    # Get hub to determine location
+    hub = await db.hubs.find_one({"id": hub_id}, {"_id": 0})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    location_key = get_location_key(hub.get("name", ""))
+    
+    # Get custom holidays from database
+    custom_holidays = await db.holidays.find({
+        "hub_id": hub_id,
+        "date": {"$regex": f"^{year}-"}
+    }, {"_id": 0}).to_list(500)
+    
+    # Build response with national + local + custom holidays
+    all_holidays = []
+    
+    # National holidays (if year matches)
+    if year == 2026:
+        for h in NATIONAL_HOLIDAYS_2026:
+            all_holidays.append({
+                "id": f"nat_{h['date']}",
+                "hub_id": hub_id,
+                "date": h["date"],
+                "name": h["name"],
+                "type": h["type"],
+                "is_preset": True,
+                "created_at": ""
+            })
+        
+        # Local holidays for this location
+        local_holidays = LOCAL_HOLIDAYS_2026.get(location_key, [])
+        for h in local_holidays:
+            all_holidays.append({
+                "id": f"loc_{h['date']}",
+                "hub_id": hub_id,
+                "date": h["date"],
+                "name": h["name"],
+                "type": h["type"],
+                "is_preset": True,
+                "created_at": ""
+            })
+    
+    # Add custom holidays
+    for h in custom_holidays:
+        all_holidays.append({
+            "id": h["id"],
+            "hub_id": h["hub_id"],
+            "date": h["date"],
+            "name": h["name"],
+            "type": h.get("type", "local"),
+            "is_preset": False,
+            "created_at": h.get("created_at", "")
+        })
+    
+    # Sort by date
+    all_holidays.sort(key=lambda x: x["date"])
+    
+    return {
+        "year": year,
+        "hub_id": hub_id,
+        "location": location_key,
+        "holidays": all_holidays
+    }
+
+@api_router.post("/hubs/{hub_id}/holidays", response_model=HolidayResponse)
+async def create_holiday(hub_id: str, holiday_data: HolidayCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    # Check if holiday already exists for this date
+    existing = await db.holidays.find_one({
+        "hub_id": hub_id,
+        "date": holiday_data.date
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un festivo para esta fecha")
+    
+    holiday = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "date": holiday_data.date,
+        "name": holiday_data.name,
+        "type": holiday_data.type or "local",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.holidays.insert_one(holiday)
+    
+    return HolidayResponse(
+        id=holiday["id"],
+        hub_id=holiday["hub_id"],
+        date=holiday["date"],
+        name=holiday["name"],
+        type=holiday["type"],
+        created_at=holiday["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/holidays/{holiday_id}", response_model=HolidayResponse)
+async def update_holiday(hub_id: str, holiday_id: str, holiday_data: HolidayUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in holiday_data.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.holidays.update_one(
+        {"id": holiday_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Festivo no encontrado")
+    
+    holiday = await db.holidays.find_one({"id": holiday_id}, {"_id": 0})
+    return HolidayResponse(
+        id=holiday["id"],
+        hub_id=holiday["hub_id"],
+        date=holiday["date"],
+        name=holiday["name"],
+        type=holiday.get("type", "local"),
+        created_at=holiday.get("created_at", "")
+    )
+
+@api_router.delete("/hubs/{hub_id}/holidays/{holiday_id}")
+async def delete_holiday(hub_id: str, holiday_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.holidays.delete_one({"id": holiday_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Festivo no encontrado o es un festivo predefinido")
+    return {"message": "Festivo eliminado correctamente"}
+
+# ==================== TIME RESTRICTIONS (RESTRICCIONES HORARIAS) ROUTES ====================
+
+@api_router.get("/hubs/{hub_id}/time-restrictions")
+async def get_time_restrictions(hub_id: str, current_user: dict = Depends(get_current_user)):
+    restrictions = await db.time_restrictions.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    return [TimeRestrictionResponse(
+        id=r["id"],
+        hub_id=r["hub_id"],
+        zona=r["zona"],
+        horario=r["horario"],
+        dias=r.get("dias", "L-V"),
+        aplica_a=r["aplica_a"],
+        notas=r.get("notas", ""),
+        created_at=r.get("created_at", "")
+    ) for r in restrictions]
+
+@api_router.post("/hubs/{hub_id}/time-restrictions", response_model=TimeRestrictionResponse)
+async def create_time_restriction(hub_id: str, restriction_data: TimeRestrictionCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    if restriction_data.aplica_a not in RESTRICTION_APPLIES_TO:
+        raise HTTPException(status_code=400, detail=f"aplica_a debe ser uno de: {RESTRICTION_APPLIES_TO}")
+    
+    restriction = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "zona": restriction_data.zona,
+        "horario": restriction_data.horario,
+        "dias": restriction_data.dias or "L-V",
+        "aplica_a": restriction_data.aplica_a,
+        "notas": restriction_data.notas or "",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.time_restrictions.insert_one(restriction)
+    
+    return TimeRestrictionResponse(
+        id=restriction["id"],
+        hub_id=restriction["hub_id"],
+        zona=restriction["zona"],
+        horario=restriction["horario"],
+        dias=restriction["dias"],
+        aplica_a=restriction["aplica_a"],
+        notas=restriction["notas"],
+        created_at=restriction["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/time-restrictions/{restriction_id}", response_model=TimeRestrictionResponse)
+async def update_time_restriction(hub_id: str, restriction_id: str, restriction_data: TimeRestrictionUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in restriction_data.model_dump().items() if v is not None}
+    
+    if "aplica_a" in update_data and update_data["aplica_a"] not in RESTRICTION_APPLIES_TO:
+        raise HTTPException(status_code=400, detail=f"aplica_a debe ser uno de: {RESTRICTION_APPLIES_TO}")
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.time_restrictions.update_one(
+        {"id": restriction_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Restricción no encontrada")
+    
+    restriction = await db.time_restrictions.find_one({"id": restriction_id}, {"_id": 0})
+    return TimeRestrictionResponse(
+        id=restriction["id"],
+        hub_id=restriction["hub_id"],
+        zona=restriction["zona"],
+        horario=restriction["horario"],
+        dias=restriction.get("dias", "L-V"),
+        aplica_a=restriction["aplica_a"],
+        notas=restriction.get("notas", ""),
+        created_at=restriction.get("created_at", "")
+    )
+
+@api_router.delete("/hubs/{hub_id}/time-restrictions/{restriction_id}")
+async def delete_time_restriction(hub_id: str, restriction_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.time_restrictions.delete_one({"id": restriction_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Restricción no encontrada")
+    return {"message": "Restricción eliminada correctamente"}
+
 # ==================== CATEGORIES ====================
 
 CATEGORIES = [
