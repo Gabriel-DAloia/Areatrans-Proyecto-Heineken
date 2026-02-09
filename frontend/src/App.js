@@ -12,6 +12,8 @@ import HubDetail from './pages/HubDetail';
 import Asistencias from './pages/Asistencias';
 import Flota from './pages/Flota';
 import HistoricoIncidencias from './pages/HistoricoIncidencias';
+import Compras from './pages/Compras';
+import Contactos from './pages/Contactos';
 import CategoryGeneric from './pages/CategoryGeneric';
 import './App.css';
 
@@ -32,6 +34,8 @@ function App() {
           <Route path="/hub/:hubId/asistencias" element={<Layout><Asistencias /></Layout>} />
           <Route path="/hub/:hubId/flota" element={<Layout><Flota /></Layout>} />
           <Route path="/hub/:hubId/historico-incidencias" element={<Layout><HistoricoIncidencias /></Layout>} />
+          <Route path="/hub/:hubId/compras" element={<Layout><Compras /></Layout>} />
+          <Route path="/hub/:hubId/contactos" element={<Layout><Contactos /></Layout>} />
           <Route path="/hub/:hubId/:category" element={<Layout><CategoryGeneric /></Layout>} />
           
           {/* Fallback */}
