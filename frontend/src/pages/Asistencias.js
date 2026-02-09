@@ -228,35 +228,56 @@ const Asistencias = () => {
     // Create workbook
     const wb = XLSX.utils.book_new();
     
-    // Create attendance sheet data
+    // Create attendance sheet data with 3 rows per employee
     const attendanceData = [];
     
     // Header row with days
-    const headerRow = ['Empleado'];
+    const headerRow = ['Empleado', 'Tipo'];
     for (let day = 1; day <= daysInMonth; day++) {
-      headerRow.push(`${day}`);
+      const dayName = getDayName(selectedYear, selectedMonth, day);
+      headerRow.push(`${day} ${dayName}`);
     }
-    headerRow.push('H.Extras', 'Dietas');
+    headerRow.push('Total');
     attendanceData.push(headerRow);
     
-    // Data rows
+    // Data rows - 3 rows per employee
     for (const emp of employees) {
-      const row = [emp.name];
       let totalExtras = 0;
       let totalDiets = 0;
+      let daysWorked = 0;
       
+      // Row 1: Attendance
+      const rowAttendance = [emp.name, 'Asistencia'];
       for (let day = 1; day <= daysInMonth; day++) {
         const status = getCellValue(emp.id, day, 'status');
+        rowAttendance.push(status || '');
+        if (status === '1') daysWorked++;
+      }
+      rowAttendance.push(daysWorked);
+      attendanceData.push(rowAttendance);
+      
+      // Row 2: Extra Hours
+      const rowExtras = ['', 'H. Extras'];
+      for (let day = 1; day <= daysInMonth; day++) {
         const extras = parseFloat(getCellValue(emp.id, day, 'extra_hours')) || 0;
-        const diet = parseInt(getCellValue(emp.id, day, 'diet')) || 0;
-        
-        row.push(status || '');
+        rowExtras.push(extras !== 0 ? extras : '');
         totalExtras += extras;
+      }
+      rowExtras.push(totalExtras !== 0 ? totalExtras : '');
+      attendanceData.push(rowExtras);
+      
+      // Row 3: Diets
+      const rowDiets = ['', 'Dietas'];
+      for (let day = 1; day <= daysInMonth; day++) {
+        const diet = parseInt(getCellValue(emp.id, day, 'diet')) || 0;
+        rowDiets.push(diet === 1 ? 1 : '');
         totalDiets += diet;
       }
+      rowDiets.push(totalDiets !== 0 ? totalDiets : '');
+      attendanceData.push(rowDiets);
       
-      row.push(totalExtras, totalDiets);
-      attendanceData.push(row);
+      // Empty row for separation
+      attendanceData.push([]);
     }
     
     const ws1 = XLSX.utils.aoa_to_sheet(attendanceData);
