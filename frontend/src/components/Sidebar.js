@@ -22,7 +22,9 @@ import {
   UserCircle,
   MapPin,
   Menu,
-  ChevronDown
+  ChevronDown,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
