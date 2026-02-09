@@ -412,27 +412,37 @@ const Asistencias = () => {
         </Card>
       ) : (
         <Card className="border border-slate-200 overflow-hidden">
-          <ScrollArea className="w-full">
-            <div className="min-w-max">
+          <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
+            <div style={{ minWidth: `${180 + (daysInMonth * 60) + 200}px` }}>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="sticky left-0 bg-slate-50 z-10 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[180px] border-r border-slate-200">
+                    <th className="sticky left-0 bg-slate-50 z-10 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[180px] border-r border-slate-200">
                       Empleado
                     </th>
-                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                      <th key={day} className="px-1 py-3 text-center text-xs font-semibold text-slate-500 min-w-[60px]">
-                        {day}
-                      </th>
-                    ))}
-                    <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[70px] border-l border-slate-200">
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                      const dayName = getDayName(selectedYear, selectedMonth, day);
+                      const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
+                      return (
+                        <th 
+                          key={day} 
+                          className={`px-1 py-2 text-center min-w-[50px] ${isWeekend ? 'bg-slate-100' : ''}`}
+                        >
+                          <div className="text-xs font-semibold text-slate-700">{day}</div>
+                          <div className={`text-[10px] font-medium ${isWeekend ? 'text-blue-600' : 'text-slate-400'}`}>
+                            {dayName}
+                          </div>
+                        </th>
+                      );
+                    })}
+                    <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[70px] border-l border-slate-200 bg-slate-50">
                       H.Ext
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[60px]">
+                    <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[60px] bg-slate-50">
                       Dieta
                     </th>
                     {user?.is_admin && (
-                      <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[50px]">
+                      <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[50px] bg-slate-50">
                         
                       </th>
                     )}
@@ -449,23 +459,27 @@ const Asistencias = () => {
                           <div className="text-xs text-slate-400 truncate">{employee.position}</div>
                         )}
                       </td>
-                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                        <td key={day} className="px-1 py-1">
-                          <select
-                            value={getCellValue(employee.id, day, 'status')}
-                            onChange={(e) => handleCellChange(employee.id, day, 'status', e.target.value)}
-                            className={`w-full h-8 text-center text-xs font-medium border-0 rounded cursor-pointer focus:ring-2 focus:ring-blue-500 ${getStatusColor(getCellValue(employee.id, day, 'status'))}`}
-                            data-testid={`cell-${employee.id}-${day}`}
-                          >
-                            <option value="">-</option>
-                            <option value="1">1</option>
-                            <option value="D">D</option>
-                            <option value="IN">IN</option>
-                            <option value="E">E</option>
-                            <option value="O">O</option>
-                          </select>
-                        </td>
-                      ))}
+                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                        const dayName = getDayName(selectedYear, selectedMonth, day);
+                        const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
+                        return (
+                          <td key={day} className={`px-1 py-1 ${isWeekend ? 'bg-slate-100/50' : ''}`}>
+                            <select
+                              value={getCellValue(employee.id, day, 'status')}
+                              onChange={(e) => handleCellChange(employee.id, day, 'status', e.target.value)}
+                              className={`w-full h-8 text-center text-xs font-medium border-0 rounded cursor-pointer focus:ring-2 focus:ring-blue-500 ${getStatusColor(getCellValue(employee.id, day, 'status'))}`}
+                              data-testid={`cell-${employee.id}-${day}`}
+                            >
+                              <option value="">-</option>
+                              <option value="1">1</option>
+                              <option value="D">D</option>
+                              <option value="IN">IN</option>
+                              <option value="E">E</option>
+                              <option value="O">O</option>
+                            </select>
+                          </td>
+                        );
+                      })}
                       <td className="px-1 py-1 border-l border-slate-200">
                         <input
                           type="number"
@@ -515,7 +529,7 @@ const Asistencias = () => {
                 </tbody>
               </table>
             </div>
-          </ScrollArea>
+          </div>
         </Card>
       )}
 
