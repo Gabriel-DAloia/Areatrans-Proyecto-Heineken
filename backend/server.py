@@ -904,6 +904,168 @@ async def delete_incident(hub_id: str, incident_id: str, current_user: dict = De
         raise HTTPException(status_code=404, detail="Incidencia no encontrada")
     return {"message": "Incidencia eliminada correctamente"}
 
+# ==================== PURCHASE ROUTES (COMPRAS) ====================
+
+@api_router.get("/hubs/{hub_id}/purchases")
+async def get_purchases(hub_id: str, current_user: dict = Depends(get_current_user)):
+    purchases = await db.purchases.find({"hub_id": hub_id}, {"_id": 0}).to_list(1000)
+    return [PurchaseResponse(
+        id=p["id"],
+        hub_id=p["hub_id"],
+        item=p["item"],
+        specifications=p.get("specifications", ""),
+        supplier=p.get("supplier", ""),
+        price=p.get("price", 1),
+        quantity=p.get("quantity", 1),
+        total=p.get("total", p.get("price", 1) * p.get("quantity", 1)),
+        created_at=p["created_at"]
+    ) for p in purchases]
+
+@api_router.post("/hubs/{hub_id}/purchases", response_model=PurchaseResponse)
+async def create_purchase(hub_id: str, purchase_data: PurchaseCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    price = purchase_data.price or 1
+    quantity = purchase_data.quantity or 1
+    total = price * quantity
+    
+    purchase = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "item": purchase_data.item,
+        "specifications": purchase_data.specifications or "",
+        "supplier": purchase_data.supplier or "",
+        "price": price,
+        "quantity": quantity,
+        "total": total,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.purchases.insert_one(purchase)
+    return PurchaseResponse(
+        id=purchase["id"],
+        hub_id=purchase["hub_id"],
+        item=purchase["item"],
+        specifications=purchase["specifications"],
+        supplier=purchase["supplier"],
+        price=purchase["price"],
+        quantity=purchase["quantity"],
+        total=purchase["total"],
+        created_at=purchase["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/purchases/{purchase_id}", response_model=PurchaseResponse)
+async def update_purchase(hub_id: str, purchase_id: str, purchase_data: PurchaseUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in purchase_data.model_dump().items() if v is not None}
+    
+    # Recalculate total if price or quantity changed
+    if "price" in update_data or "quantity" in update_data:
+        existing = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
+        if existing:
+            price = update_data.get("price", existing.get("price", 1))
+            quantity = update_data.get("quantity", existing.get("quantity", 1))
+            update_data["total"] = price * quantity
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.purchases.update_one(
+        {"id": purchase_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Compra no encontrada")
+    
+    purchase = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
+    return PurchaseResponse(
+        id=purchase["id"],
+        hub_id=purchase["hub_id"],
+        item=purchase["item"],
+        specifications=purchase.get("specifications", ""),
+        supplier=purchase.get("supplier", ""),
+        price=purchase.get("price", 1),
+        quantity=purchase.get("quantity", 1),
+        total=purchase.get("total", 1),
+        created_at=purchase["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/purchases/{purchase_id}")
+async def delete_purchase(hub_id: str, purchase_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.purchases.delete_one({"id": purchase_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Compra no encontrada")
+    return {"message": "Compra eliminada correctamente"}
+
+# ==================== CONTACT ROUTES (CONTACTOS) ====================
+
+@api_router.get("/hubs/{hub_id}/contacts")
+async def get_contacts(hub_id: str, current_user: dict = Depends(get_current_user)):
+    contacts = await db.contacts.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    return [ContactResponse(
+        id=c["id"],
+        hub_id=c["hub_id"],
+        name=c["name"],
+        position=c.get("position", ""),
+        phone=c.get("phone", ""),
+        created_at=c["created_at"]
+    ) for c in contacts]
+
+@api_router.post("/hubs/{hub_id}/contacts", response_model=ContactResponse)
+async def create_contact(hub_id: str, contact_data: ContactCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    contact = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "name": contact_data.name,
+        "position": contact_data.position or "",
+        "phone": contact_data.phone or "",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.contacts.insert_one(contact)
+    return ContactResponse(
+        id=contact["id"],
+        hub_id=contact["hub_id"],
+        name=contact["name"],
+        position=contact["position"],
+        phone=contact["phone"],
+        created_at=contact["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/contacts/{contact_id}", response_model=ContactResponse)
+async def update_contact(hub_id: str, contact_id: str, contact_data: ContactUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in contact_data.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.contacts.update_one(
+        {"id": contact_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    
+    contact = await db.contacts.find_one({"id": contact_id}, {"_id": 0})
+    return ContactResponse(
+        id=contact["id"],
+        hub_id=contact["hub_id"],
+        name=contact["name"],
+        position=contact.get("position", ""),
+        phone=contact.get("phone", ""),
+        created_at=contact["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/contacts/{contact_id}")
+async def delete_contact(hub_id: str, contact_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.contacts.delete_one({"id": contact_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+    return {"message": "Contacto eliminado correctamente"}
+
 # ==================== CATEGORIES ====================
 
 CATEGORIES = [
