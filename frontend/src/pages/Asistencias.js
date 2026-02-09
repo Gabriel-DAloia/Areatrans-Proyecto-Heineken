@@ -412,11 +412,11 @@ const Asistencias = () => {
       ) : (
         <Card className="border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
-            <div style={{ minWidth: `${180 + (daysInMonth * 60) + 200}px` }}>
+            <div style={{ minWidth: `${180 + (daysInMonth * 50) + 120}px` }}>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="sticky left-0 bg-slate-50 z-10 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[180px] border-r border-slate-200">
+                    <th className="sticky left-0 bg-slate-50 z-10 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[160px] border-r border-slate-200">
                       Empleado
                     </th>
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
@@ -425,7 +425,7 @@ const Asistencias = () => {
                       return (
                         <th 
                           key={day} 
-                          className={`px-1 py-2 text-center min-w-[50px] ${isWeekend ? 'bg-slate-100' : ''}`}
+                          className={`px-0.5 py-2 text-center min-w-[44px] ${isWeekend ? 'bg-slate-100' : ''}`}
                         >
                           <div className="text-xs font-semibold text-slate-700">{day}</div>
                           <div className={`text-[10px] font-medium ${isWeekend ? 'text-blue-600' : 'text-slate-400'}`}>
@@ -434,97 +434,154 @@ const Asistencias = () => {
                         </th>
                       );
                     })}
-                    <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[70px] border-l border-slate-200 bg-slate-50">
-                      H.Ext
-                    </th>
-                    <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[60px] bg-slate-50">
-                      Dieta
+                    <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[60px] border-l border-slate-200 bg-slate-50">
+                      Total
                     </th>
                     {user?.is_admin && (
-                      <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[50px] bg-slate-50">
+                      <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 min-w-[40px] bg-slate-50">
                         
                       </th>
                     )}
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((employee, empIndex) => (
-                    <tr key={employee.id} className={empIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                      <td className="sticky left-0 z-10 px-4 py-2 text-sm font-medium text-slate-900 border-r border-slate-200" style={{ backgroundColor: empIndex % 2 === 0 ? 'white' : 'rgb(248 250 252 / 0.5)' }}>
-                        <div className="truncate max-w-[160px]" title={employee.name}>
-                          {employee.name}
-                        </div>
-                        {employee.position && (
-                          <div className="text-xs text-slate-400 truncate">{employee.position}</div>
-                        )}
-                      </td>
-                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                        const dayName = getDayName(selectedYear, selectedMonth, day);
-                        const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
-                        return (
-                          <td key={day} className={`px-1 py-1 ${isWeekend ? 'bg-slate-100/50' : ''}`}>
-                            <select
-                              value={getCellValue(employee.id, day, 'status')}
-                              onChange={(e) => handleCellChange(employee.id, day, 'status', e.target.value)}
-                              className={`w-full h-8 text-center text-xs font-medium border-0 rounded cursor-pointer focus:ring-2 focus:ring-blue-500 ${getStatusColor(getCellValue(employee.id, day, 'status'))}`}
-                              data-testid={`cell-${employee.id}-${day}`}
-                            >
-                              <option value="">-</option>
-                              <option value="1">1</option>
-                              <option value="D">D</option>
-                              <option value="IN">IN</option>
-                              <option value="E">E</option>
-                              <option value="O">O</option>
-                            </select>
-                          </td>
-                        );
-                      })}
-                      <td className="px-1 py-1 border-l border-slate-200">
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          value={(() => {
-                            let total = 0;
-                            for (let d = 1; d <= daysInMonth; d++) {
-                              total += parseFloat(getCellValue(employee.id, d, 'extra_hours')) || 0;
-                            }
-                            return total || '';
-                          })()}
-                          onChange={(e) => {
-                            // For simplicity, set extra hours on day 1 when edited in total
-                            handleCellChange(employee.id, 1, 'extra_hours', e.target.value);
-                          }}
-                          className="w-full h-8 text-center text-xs border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="0"
-                        />
-                      </td>
-                      <td className="px-1 py-1">
-                        <div className="text-center text-xs font-medium text-slate-600">
-                          {(() => {
-                            let total = 0;
-                            for (let d = 1; d <= daysInMonth; d++) {
-                              total += parseInt(getCellValue(employee.id, d, 'diet')) || 0;
-                            }
-                            return total;
-                          })()}
-                        </div>
-                      </td>
-                      {user?.is_admin && (
-                        <td className="px-1 py-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteEmployee(employee.id, employee.name)}
-                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                            data-testid={`delete-employee-${employee.id}`}
+                  {employees.map((employee, empIndex) => {
+                    const bgColor = empIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                    const stickyBg = empIndex % 2 === 0 ? 'white' : 'rgb(248 250 252 / 0.5)';
+                    
+                    // Calculate totals
+                    let totalExtras = 0;
+                    let totalDiets = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      totalExtras += parseFloat(getCellValue(employee.id, d, 'extra_hours')) || 0;
+                      totalDiets += parseInt(getCellValue(employee.id, d, 'diet')) || 0;
+                    }
+                    
+                    return (
+                      <React.Fragment key={employee.id}>
+                        {/* Row 1: Employee name + Attendance */}
+                        <tr className={`${bgColor} border-t border-slate-200`}>
+                          <td 
+                            rowSpan={3} 
+                            className="sticky left-0 z-10 px-3 py-2 text-sm font-medium text-slate-900 border-r border-slate-200 align-top"
+                            style={{ backgroundColor: stickyBg }}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
+                            <div className="truncate max-w-[140px] font-semibold" title={employee.name}>
+                              {employee.name}
+                            </div>
+                            {employee.position && (
+                              <div className="text-xs text-slate-400 truncate mb-1">{employee.position}</div>
+                            )}
+                            {user?.is_admin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                                className="h-6 px-2 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 mt-1"
+                                data-testid={`delete-employee-${employee.id}`}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Eliminar
+                              </Button>
+                            )}
+                          </td>
+                          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                            const dayName = getDayName(selectedYear, selectedMonth, day);
+                            const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
+                            return (
+                              <td key={day} className={`px-0.5 py-0.5 ${isWeekend ? 'bg-slate-100/50' : ''}`}>
+                                <select
+                                  value={getCellValue(employee.id, day, 'status')}
+                                  onChange={(e) => handleCellChange(employee.id, day, 'status', e.target.value)}
+                                  className={`w-full h-7 text-center text-xs font-medium border-0 rounded cursor-pointer focus:ring-2 focus:ring-blue-500 ${getStatusColor(getCellValue(employee.id, day, 'status'))}`}
+                                  data-testid={`cell-${employee.id}-${day}`}
+                                >
+                                  <option value="">-</option>
+                                  <option value="1">1</option>
+                                  <option value="D">D</option>
+                                  <option value="IN">IN</option>
+                                  <option value="E">E</option>
+                                  <option value="O">O</option>
+                                </select>
+                              </td>
+                            );
+                          })}
+                          <td className="px-1 py-0.5 border-l border-slate-200 text-center">
+                            <span className="text-xs font-medium text-slate-500">Asist.</span>
+                          </td>
+                          {user?.is_admin && <td rowSpan={3}></td>}
+                        </tr>
+                        
+                        {/* Row 2: Extra Hours */}
+                        <tr className={bgColor}>
+                          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                            const dayName = getDayName(selectedYear, selectedMonth, day);
+                            const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
+                            const extraValue = getCellValue(employee.id, day, 'extra_hours');
+                            const hasValue = extraValue && extraValue !== 0 && extraValue !== '0';
+                            const isNegative = parseFloat(extraValue) < 0;
+                            return (
+                              <td key={day} className={`px-0.5 py-0.5 ${isWeekend ? 'bg-slate-100/50' : ''}`}>
+                                <input
+                                  type="number"
+                                  step="0.25"
+                                  value={extraValue || ''}
+                                  onChange={(e) => handleCellChange(employee.id, day, 'extra_hours', e.target.value)}
+                                  className={`w-full h-6 text-center text-[11px] border rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 ${
+                                    hasValue 
+                                      ? isNegative 
+                                        ? 'bg-red-50 border-red-200 text-red-700 font-medium' 
+                                        : 'bg-purple-50 border-purple-200 text-purple-700 font-medium'
+                                      : 'border-slate-200'
+                                  }`}
+                                  placeholder=""
+                                  data-testid={`extra-${employee.id}-${day}`}
+                                />
+                              </td>
+                            );
+                          })}
+                          <td className="px-1 py-0.5 border-l border-slate-200">
+                            <div className={`text-center text-xs font-bold ${totalExtras < 0 ? 'text-red-600' : 'text-purple-600'}`}>
+                              {totalExtras !== 0 ? totalExtras : '-'}
+                            </div>
+                            <div className="text-[10px] text-slate-400 text-center">H.Ext</div>
+                          </td>
+                        </tr>
+                        
+                        {/* Row 3: Diets */}
+                        <tr className={`${bgColor} border-b border-slate-300`}>
+                          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                            const dayName = getDayName(selectedYear, selectedMonth, day);
+                            const isWeekend = dayName === 'Sáb' || dayName === 'Dom';
+                            const dietValue = getCellValue(employee.id, day, 'diet');
+                            const hasDiet = dietValue === 1 || dietValue === '1';
+                            return (
+                              <td key={day} className={`px-0.5 py-0.5 ${isWeekend ? 'bg-slate-100/50' : ''}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCellChange(employee.id, day, 'diet', hasDiet ? 0 : 1)}
+                                  className={`w-full h-6 text-center text-[11px] font-medium border rounded transition-colors ${
+                                    hasDiet 
+                                      ? 'bg-cyan-100 border-cyan-300 text-cyan-700' 
+                                      : 'bg-white border-slate-200 text-slate-300 hover:border-cyan-300'
+                                  }`}
+                                  data-testid={`diet-${employee.id}-${day}`}
+                                >
+                                  {hasDiet ? '1' : '-'}
+                                </button>
+                              </td>
+                            );
+                          })}
+                          <td className="px-1 py-0.5 border-l border-slate-200">
+                            <div className="text-center text-xs font-bold text-cyan-600">
+                              {totalDiets !== 0 ? totalDiets : '-'}
+                            </div>
+                            <div className="text-[10px] text-slate-400 text-center">Dietas</div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
