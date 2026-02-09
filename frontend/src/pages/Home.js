@@ -2,48 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { 
   Building2, 
   Users, 
-  FileText, 
   Clock,
   ArrowRight,
-  Wrench,
-  Banknote,
-  Truck,
-  History,
-  Package,
-  ShoppingCart,
-  Scale,
   MapPin,
-  TrendingUp
+  ChevronRight
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
-
-const categoryIcons = {
-  'Asistencias': Wrench,
-  'Liquidaciones': Banknote,
-  'Flota': Truck,
-  'Historico de incidencias': History,
-  'Repartos': Package,
-  'Compras': ShoppingCart,
-  'Kilos/Litros': Scale,
-  'Contactos': Users
-};
-
-const categoryColors = {
-  'Asistencias': 'bg-blue-500',
-  'Liquidaciones': 'bg-emerald-500',
-  'Flota': 'bg-indigo-500',
-  'Historico de incidencias': 'bg-amber-500',
-  'Repartos': 'bg-orange-500',
-  'Compras': 'bg-purple-500',
-  'Kilos/Litros': 'bg-cyan-500',
-  'Contactos': 'bg-pink-500'
-};
 
 const Home = () => {
   const { user } = useAuth();
@@ -76,17 +46,6 @@ const Home = () => {
     return 'Buenas noches';
   };
 
-  const categories = [
-    'Asistencias',
-    'Liquidaciones',
-    'Flota',
-    'Historico de incidencias',
-    'Repartos',
-    'Compras',
-    'Kilos/Litros',
-    'Contactos'
-  ];
-
   return (
     <div className="space-y-8 animate-fade-in" data-testid="home-dashboard">
       {/* Hero Section */}
@@ -104,7 +63,7 @@ const Home = () => {
               {getGreeting()}, {user?.full_name?.split(' ')[0]}
             </h1>
             <p className="text-lg text-blue-100 mb-6 max-w-lg">
-              Bienvenido a HubManager. Gestiona tus operaciones logísticas de forma eficiente.
+              Bienvenido a HubManager. Selecciona un hub para gestionar sus operaciones.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/hubs">
@@ -143,12 +102,12 @@ const Home = () => {
         <Card className="lg:col-span-2 border border-slate-200 hover:border-blue-300 transition-colors card-hover">
           <CardContent className="p-6 flex flex-col justify-between h-full">
             <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
-              <FileText className="w-5 h-5 text-emerald-600" />
+              <Users className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Registros</p>
-              <p className="text-3xl font-bold text-slate-900" data-testid="total-records-count">
-                {loading ? '-' : stats?.total_records || 0}
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Empleados</p>
+              <p className="text-3xl font-bold text-slate-900" data-testid="total-employees-count">
+                {loading ? '-' : stats?.total_employees || 0}
               </p>
             </div>
           </CardContent>
@@ -177,63 +136,43 @@ const Home = () => {
               </Card>
             ))
           ) : (
-            hubs.slice(0, 6).map((hub, index) => (
-              <Link to={`/hubs?selected=${hub.id}`} key={hub.id}>
+            hubs.map((hub, index) => (
+              <Link to={`/hub/${hub.id}`} key={hub.id}>
                 <Card 
                   className="border border-slate-200 hover:border-blue-400 transition-all card-hover cursor-pointer group"
                   style={{ animationDelay: `${index * 0.1}s` }}
+                  data-testid={`hub-card-${hub.id}`}
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {hub.name}
-                        </h3>
-                        <p className="text-sm text-slate-500 mt-1">{hub.location}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                            <Building2 className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              {hub.name}
+                            </h3>
+                            {hub.location && (
+                              <div className="flex items-center gap-1 text-sm text-slate-500">
+                                <MapPin className="w-3 h-3" />
+                                <span>{hub.location}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {hub.description && (
+                          <p className="text-sm text-slate-500 line-clamp-2 ml-13">{hub.description}</p>
+                        )}
                       </div>
-                      <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                        <MapPin className="w-4 h-4 text-blue-600" />
-                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors mt-2" />
                     </div>
                   </CardContent>
                 </Card>
               </Link>
             ))
           )}
-        </div>
-      </div>
-
-      {/* Categories Section */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Categorías</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {categories.map((category, index) => {
-            const Icon = categoryIcons[category] || Package;
-            const bgColor = categoryColors[category] || 'bg-slate-500';
-            const count = stats?.records_by_category?.[category] || 0;
-            
-            return (
-              <Link to={`/categoria/${encodeURIComponent(category)}`} key={category}>
-                <Card 
-                  className="border border-slate-200 hover:border-blue-400 transition-all card-hover cursor-pointer group"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                  data-testid={`category-card-${category.toLowerCase().replace(/\s/g, '-')}`}
-                >
-                  <CardContent className="p-4">
-                    <div className={`w-10 h-10 ${bgColor} rounded-lg flex items-center justify-center mb-3`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
-                      {category}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {count} registro{count !== 1 ? 's' : ''}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
         </div>
       </div>
 

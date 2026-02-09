@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -21,49 +22,52 @@ import {
   UserCircle,
   MapPin,
   Menu,
-  X
+  ChevronDown
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
-const categoryIcons = {
-  'Asistencias': Wrench,
-  'Liquidaciones': Banknote,
-  'Flota': Truck,
-  'Historico de incidencias': History,
-  'Repartos': Package,
-  'Compras': ShoppingCart,
-  'Kilos/Litros': Scale,
-  'Contactos': Users
-};
+const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const categoryColors = {
-  'Asistencias': 'text-blue-500',
-  'Liquidaciones': 'text-emerald-500',
-  'Flota': 'text-indigo-500',
-  'Historico de incidencias': 'text-amber-500',
-  'Repartos': 'text-orange-500',
-  'Compras': 'text-purple-500',
-  'Kilos/Litros': 'text-cyan-500',
-  'Contactos': 'text-pink-500'
-};
-
-const categories = [
-  'Asistencias',
-  'Liquidaciones',
-  'Flota',
-  'Historico de incidencias',
-  'Repartos',
-  'Compras',
-  'Kilos/Litros',
-  'Contactos'
+const categoryConfig = [
+  { name: 'Asistencias', icon: Wrench, route: 'asistencias', color: 'text-blue-500' },
+  { name: 'Liquidaciones', icon: Banknote, route: 'liquidaciones', color: 'text-emerald-500' },
+  { name: 'Flota', icon: Truck, route: 'flota', color: 'text-indigo-500' },
+  { name: 'Histórico', icon: History, route: 'historico-incidencias', color: 'text-amber-500' },
+  { name: 'Repartos', icon: Package, route: 'repartos', color: 'text-orange-500' },
+  { name: 'Compras', icon: ShoppingCart, route: 'compras', color: 'text-purple-500' },
+  { name: 'Kilos/Litros', icon: Scale, route: 'kilos-litros', color: 'text-cyan-500' },
+  { name: 'Contactos', icon: Users, route: 'contactos', color: 'text-pink-500' }
 ];
 
 const SidebarContent = ({ isCollapsed, onToggle, isMobile = false }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [hubs, setHubs] = useState([]);
+  const [expandedHub, setExpandedHub] = useState(null);
+
+  useEffect(() => {
+    const fetchHubs = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/hubs`);
+        setHubs(response.data);
+      } catch (error) {
+        console.error('Error fetching hubs:', error);
+      }
+    };
+    fetchHubs();
+  }, []);
+
+  // Auto-expand hub based on current route
+  useEffect(() => {
+    const match = location.pathname.match(/\/hub\/([^/]+)/);
+    if (match) {
+      setExpandedHub(match[1]);
+    }
+  }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
-  const isCategoryActive = (category) => location.pathname === `/categoria/${encodeURIComponent(category)}`;
+  const isHubActive = (hubId) => location.pathname.startsWith(`/hub/${hubId}`);
 
   const NavItem = ({ to, icon: Icon, label, iconColor = 'text-slate-400' }) => (
     <Link to={to}>
@@ -114,40 +118,74 @@ const SidebarContent = ({ isCollapsed, onToggle, isMobile = false }) => {
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1">
           <NavItem to="/" icon={Home} label="Inicio" />
-          <NavItem to="/hubs" icon={MapPin} label="Hubs" />
           
           {user?.is_admin && (
             <NavItem to="/admin" icon={Settings} label="Administración" />
           )}
         </div>
 
-        {/* Categories Section */}
+        {/* Hubs Section */}
         <div className="mt-6">
           {!isCollapsed && (
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Categorías
-            </p>
+            <div className="flex items-center justify-between px-3 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Hubs
+              </p>
+              <Link to="/hubs" className="text-xs text-blue-400 hover:text-blue-300">
+                Ver todos
+              </Link>
+            </div>
           )}
           <div className="space-y-1">
-            {categories.map((category) => {
-              const Icon = categoryIcons[category] || Package;
-              const iconColor = categoryColors[category] || 'text-slate-400';
-              return (
-                <Link to={`/categoria/${encodeURIComponent(category)}`} key={category}>
+            {hubs.slice(0, isCollapsed ? 6 : 10).map((hub) => (
+              <Collapsible 
+                key={hub.id} 
+                open={expandedHub === hub.id && !isCollapsed}
+                onOpenChange={(open) => setExpandedHub(open ? hub.id : null)}
+              >
+                <CollapsibleTrigger asChild>
                   <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                      isCategoryActive(category)
-                        ? 'bg-blue-600 text-white'
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                      isHubActive(hub.id)
+                        ? 'bg-slate-800 text-white'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }`}
-                    data-testid={`nav-category-${category.toLowerCase().replace(/\s/g, '-')}`}
+                    data-testid={`nav-hub-${hub.id}`}
                   >
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${isCategoryActive(category) ? 'text-white' : iconColor}`} />
-                    {!isCollapsed && <span className="text-sm font-medium truncate">{category}</span>}
+                    <MapPin className={`w-5 h-5 flex-shrink-0 ${isHubActive(hub.id) ? 'text-blue-400' : 'text-slate-400'}`} />
+                    {!isCollapsed && (
+                      <>
+                        <span className="text-sm font-medium truncate flex-1">{hub.name}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${expandedHub === hub.id ? 'rotate-180' : ''}`} />
+                      </>
+                    )}
                   </div>
-                </Link>
-              );
-            })}
+                </CollapsibleTrigger>
+                {!isCollapsed && (
+                  <CollapsibleContent className="pl-6 space-y-1 mt-1">
+                    {categoryConfig.map((cat) => {
+                      const Icon = cat.icon;
+                      const catPath = `/hub/${hub.id}/${cat.route}`;
+                      const isCatActive = location.pathname === catPath;
+                      return (
+                        <Link to={catPath} key={cat.route}>
+                          <div
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
+                              isCatActive
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            }`}
+                          >
+                            <Icon className={`w-4 h-4 ${isCatActive ? 'text-white' : cat.color}`} />
+                            <span className="truncate">{cat.name}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </CollapsibleContent>
+                )}
+              </Collapsible>
+            ))}
           </div>
         </div>
       </ScrollArea>
