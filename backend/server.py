@@ -209,6 +209,36 @@ class ContactResponse(BaseModel):
     phone: str
     created_at: str
 
+# Kilos/Litros models
+class KilosLitrosEntryCreate(BaseModel):
+    hub_id: str
+    route_id: str
+    date: str  # YYYY-MM-DD
+    repartidor: str  # lowercase enforced
+    clientes: int = 0
+    kilos: float = 0
+    litros: float = 0
+    bultos: int = 0
+
+class KilosLitrosEntryUpdate(BaseModel):
+    repartidor: Optional[str] = None
+    clientes: Optional[int] = None
+    kilos: Optional[float] = None
+    litros: Optional[float] = None
+    bultos: Optional[int] = None
+
+class KilosLitrosEntryResponse(BaseModel):
+    id: str
+    hub_id: str
+    route_id: str
+    date: str
+    repartidor: str
+    clientes: int
+    kilos: float
+    litros: float
+    bultos: int
+    created_at: str
+
 # Liquidation models (routes and daily entries)
 class RouteCreate(BaseModel):
     hub_id: str
