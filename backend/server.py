@@ -1707,7 +1707,9 @@ CATEGORIES = [
     {"name": "Repartos", "icon": "Package", "route": "repartos"},
     {"name": "Compras", "icon": "ShoppingCart", "route": "compras"},
     {"name": "Kilos/Litros", "icon": "Scale", "route": "kilos-litros"},
-    {"name": "Contactos", "icon": "Users", "route": "contactos"}
+    {"name": "Contactos", "icon": "Users", "route": "contactos"},
+    {"name": "Días Festivos", "icon": "Calendar", "route": "dias-festivos"},
+    {"name": "Restricciones Horarias", "icon": "Clock", "route": "restricciones-horarias"}
 ]
 
 @api_router.get("/categories")
