@@ -16,6 +16,8 @@ import Liquidaciones from './pages/Liquidaciones';
 import Compras from './pages/Compras';
 import Contactos from './pages/Contactos';
 import KilosLitros from './pages/KilosLitros';
+import DiasFestivos from './pages/DiasFestivos';
+import RestriccionesHorarias from './pages/RestriccionesHorarias';
 import CategoryGeneric from './pages/CategoryGeneric';
 import './App.css';
 
