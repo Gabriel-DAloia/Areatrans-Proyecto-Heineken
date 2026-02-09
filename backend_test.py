@@ -438,6 +438,8 @@ class HubManagerAPITester:
 
     def cleanup(self):
         """Clean up test data"""
+        if self.admin_token and self.test_employee_id and self.test_hub_id:
+            self.make_request('DELETE', f'hubs/{self.test_hub_id}/employees/{self.test_employee_id}', token=self.admin_token)
         if self.admin_token and self.created_record_id:
             self.make_request('DELETE', f'records/{self.created_record_id}', token=self.admin_token)
         if self.admin_token and self.created_hub_id:
