@@ -8,7 +8,9 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
 import Hubs from './pages/Hubs';
-import Category from './pages/Category';
+import HubDetail from './pages/HubDetail';
+import Asistencias from './pages/Asistencias';
+import CategoryGeneric from './pages/CategoryGeneric';
 import './App.css';
 
 function App() {
@@ -24,7 +26,9 @@ function App() {
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/admin" element={<Layout><Admin /></Layout>} />
           <Route path="/hubs" element={<Layout><Hubs /></Layout>} />
-          <Route path="/categoria/:categoryName" element={<Layout><Category /></Layout>} />
+          <Route path="/hub/:hubId" element={<Layout><HubDetail /></Layout>} />
+          <Route path="/hub/:hubId/asistencias" element={<Layout><Asistencias /></Layout>} />
+          <Route path="/hub/:hubId/:category" element={<Layout><CategoryGeneric /></Layout>} />
           
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
