@@ -183,6 +183,11 @@ class HubManagerAPITester:
         if status_code == 200 and isinstance(response, list):
             hub_count = len(response)
             expected_default_hubs = 6
+            # Find Hub Puerta Toledo for further testing
+            puerta_toledo = next((h for h in response if 'Puerta Toledo' in h['name']), None)
+            if puerta_toledo:
+                self.test_hub_id = puerta_toledo['id']
+            
             self.log_test("Get Hubs", hub_count >= expected_default_hubs, 
                          f"Found {hub_count} hubs (expected at least {expected_default_hubs})", 
                          {"count": hub_count, "hubs": [h.get('name') for h in response[:3]]})
