@@ -15,6 +15,8 @@ class HubManagerAPITester:
         self.created_user_id = None
         self.created_hub_id = None
         self.created_record_id = None
+        self.test_hub_id = None
+        self.test_employee_id = None
 
     def log_test(self, name: str, passed: bool, message: str = "", response_data: Dict[Any, Any] = None):
         """Log test results"""
