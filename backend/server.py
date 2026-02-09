@@ -1351,6 +1351,226 @@ async def save_liquidations_bulk(hub_id: str, entries: List[LiquidationEntryCrea
     
     return {"message": f"Guardadas {saved_count} entradas", "count": saved_count}
 
+# ==================== KILOS/LITROS ROUTES ====================
+
+@api_router.get("/hubs/{hub_id}/kilos-litros")
+async def get_kilos_litros(
+    hub_id: str,
+    year: int,
+    month: int,
+    route_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    # Build date range
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    query = {
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }
+    if route_id:
+        query["route_id"] = route_id
+    
+    entries = await db.kilos_litros.find(query, {"_id": 0}).sort("date", 1).to_list(10000)
+    
+    return [KilosLitrosEntryResponse(
+        id=e["id"],
+        hub_id=e["hub_id"],
+        route_id=e["route_id"],
+        date=e["date"],
+        repartidor=e.get("repartidor", ""),
+        clientes=e.get("clientes", 0),
+        kilos=e.get("kilos", 0),
+        litros=e.get("litros", 0),
+        bultos=e.get("bultos", 0),
+        created_at=e["created_at"]
+    ) for e in entries]
+
+@api_router.post("/hubs/{hub_id}/kilos-litros", response_model=KilosLitrosEntryResponse)
+async def create_kilos_litros_entry(hub_id: str, entry_data: KilosLitrosEntryCreate, current_user: dict = Depends(get_current_user)):
+    # Verify route exists
+    route = await db.routes.find_one({"id": entry_data.route_id, "hub_id": hub_id})
+    if not route:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    
+    # Enforce lowercase for repartidor
+    repartidor = entry_data.repartidor.lower() if entry_data.repartidor else ""
+    
+    # Check if entry already exists for this date, route, and repartidor
+    existing = await db.kilos_litros.find_one({
+        "route_id": entry_data.route_id,
+        "date": entry_data.date,
+        "repartidor": repartidor
+    })
+    
+    if existing:
+        # Update existing entry
+        await db.kilos_litros.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "clientes": entry_data.clientes or 0,
+                "kilos": entry_data.kilos or 0,
+                "litros": entry_data.litros or 0,
+                "bultos": entry_data.bultos or 0
+            }}
+        )
+        entry = await db.kilos_litros.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        # Create new entry
+        entry = {
+            "id": str(uuid.uuid4()),
+            "hub_id": hub_id,
+            "route_id": entry_data.route_id,
+            "date": entry_data.date,
+            "repartidor": repartidor,
+            "clientes": entry_data.clientes or 0,
+            "kilos": entry_data.kilos or 0,
+            "litros": entry_data.litros or 0,
+            "bultos": entry_data.bultos or 0,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.kilos_litros.insert_one(entry)
+    
+    return KilosLitrosEntryResponse(
+        id=entry["id"],
+        hub_id=entry["hub_id"],
+        route_id=entry["route_id"],
+        date=entry["date"],
+        repartidor=entry.get("repartidor", ""),
+        clientes=entry.get("clientes", 0),
+        kilos=entry.get("kilos", 0),
+        litros=entry.get("litros", 0),
+        bultos=entry.get("bultos", 0),
+        created_at=entry["created_at"]
+    )
+
+@api_router.post("/hubs/{hub_id}/kilos-litros/bulk")
+async def save_kilos_litros_bulk(hub_id: str, entries: List[KilosLitrosEntryCreate], current_user: dict = Depends(get_current_user)):
+    saved_count = 0
+    for entry_data in entries:
+        repartidor = entry_data.repartidor.lower() if entry_data.repartidor else ""
+        
+        existing = await db.kilos_litros.find_one({
+            "route_id": entry_data.route_id,
+            "date": entry_data.date,
+            "repartidor": repartidor
+        })
+        
+        if existing:
+            await db.kilos_litros.update_one(
+                {"id": existing["id"]},
+                {"$set": {
+                    "clientes": entry_data.clientes or 0,
+                    "kilos": entry_data.kilos or 0,
+                    "litros": entry_data.litros or 0,
+                    "bultos": entry_data.bultos or 0
+                }}
+            )
+        else:
+            entry = {
+                "id": str(uuid.uuid4()),
+                "hub_id": hub_id,
+                "route_id": entry_data.route_id,
+                "date": entry_data.date,
+                "repartidor": repartidor,
+                "clientes": entry_data.clientes or 0,
+                "kilos": entry_data.kilos or 0,
+                "litros": entry_data.litros or 0,
+                "bultos": entry_data.bultos or 0,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.kilos_litros.insert_one(entry)
+        saved_count += 1
+    
+    return {"message": f"Guardados {saved_count} registros", "count": saved_count}
+
+@api_router.delete("/hubs/{hub_id}/kilos-litros/{entry_id}")
+async def delete_kilos_litros_entry(hub_id: str, entry_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.kilos_litros.delete_one({"id": entry_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    return {"message": "Registro eliminado correctamente"}
+
+@api_router.get("/hubs/{hub_id}/kilos-litros/summary")
+async def get_kilos_litros_summary(
+    hub_id: str,
+    year: int,
+    month: int,
+    current_user: dict = Depends(get_current_user)
+):
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    # Get all routes for this hub
+    routes = await db.routes.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    
+    # Get all kilos/litros entries for the month
+    entries = await db.kilos_litros.find({
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Calculate monthly totals
+    total_clientes = sum(e.get("clientes", 0) for e in entries)
+    total_kilos = sum(e.get("kilos", 0) for e in entries)
+    total_litros = sum(e.get("litros", 0) for e in entries)
+    total_bultos = sum(e.get("bultos", 0) for e in entries)
+    
+    # Summary by repartidor
+    repartidor_summary = {}
+    for entry in entries:
+        rep = entry.get("repartidor", "").lower()
+        if rep:
+            if rep not in repartidor_summary:
+                repartidor_summary[rep] = {"clientes": 0, "kilos": 0, "litros": 0, "bultos": 0}
+            repartidor_summary[rep]["clientes"] += entry.get("clientes", 0)
+            repartidor_summary[rep]["kilos"] += entry.get("kilos", 0)
+            repartidor_summary[rep]["litros"] += entry.get("litros", 0)
+            repartidor_summary[rep]["bultos"] += entry.get("bultos", 0)
+    
+    # Summary by route
+    route_summary = []
+    for route in routes:
+        route_entries = [e for e in entries if e.get("route_id") == route["id"]]
+        route_clientes = sum(e.get("clientes", 0) for e in route_entries)
+        route_kilos = sum(e.get("kilos", 0) for e in route_entries)
+        route_litros = sum(e.get("litros", 0) for e in route_entries)
+        route_bultos = sum(e.get("bultos", 0) for e in route_entries)
+        
+        route_summary.append({
+            "route_id": route["id"],
+            "route_name": route["name"],
+            "clientes": route_clientes,
+            "kilos": route_kilos,
+            "litros": route_litros,
+            "bultos": route_bultos
+        })
+    
+    return {
+        "year": year,
+        "month": month,
+        "totals": {
+            "clientes": total_clientes,
+            "kilos": total_kilos,
+            "litros": total_litros,
+            "bultos": total_bultos
+        },
+        "by_repartidor": [
+            {
+                "repartidor": rep,
+                "clientes": data["clientes"],
+                "kilos": data["kilos"],
+                "litros": data["litros"],
+                "bultos": data["bultos"]
+            }
+            for rep, data in repartidor_summary.items()
+        ],
+        "by_route": route_summary
+    }
+
 @api_router.get("/hubs/{hub_id}/liquidations/summary")
 async def get_liquidations_summary(
     hub_id: str,
