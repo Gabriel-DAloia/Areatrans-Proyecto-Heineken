@@ -160,6 +160,55 @@ class IncidentResponse(BaseModel):
     km: int
     created_at: str
 
+# Purchase models
+class PurchaseCreate(BaseModel):
+    hub_id: str
+    item: str
+    specifications: Optional[str] = ""
+    supplier: Optional[str] = ""
+    price: float = 1
+    quantity: int = 1
+    total: Optional[float] = None
+
+class PurchaseUpdate(BaseModel):
+    item: Optional[str] = None
+    specifications: Optional[str] = None
+    supplier: Optional[str] = None
+    price: Optional[float] = None
+    quantity: Optional[int] = None
+    total: Optional[float] = None
+
+class PurchaseResponse(BaseModel):
+    id: str
+    hub_id: str
+    item: str
+    specifications: str
+    supplier: str
+    price: float
+    quantity: int
+    total: float
+    created_at: str
+
+# Contact models
+class ContactCreate(BaseModel):
+    hub_id: str
+    name: str
+    position: Optional[str] = ""
+    phone: Optional[str] = ""
+
+class ContactUpdate(BaseModel):
+    name: Optional[str] = None
+    position: Optional[str] = None
+    phone: Optional[str] = None
+
+class ContactResponse(BaseModel):
+    id: str
+    hub_id: str
+    name: str
+    position: str
+    phone: str
+    created_at: str
+
 # ==================== HELPERS ====================
 
 def hash_password(password: str) -> str:
