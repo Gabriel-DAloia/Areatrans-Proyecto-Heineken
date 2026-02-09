@@ -114,6 +114,52 @@ class AttendanceResponse(BaseModel):
     extra_hours: float
     diet: int
 
+# Vehicle types
+VEHICLE_TYPES = ["Moto", "Furgoneta", "Carrozado", "Trailer", "Camión", "MUS"]
+
+class VehicleCreate(BaseModel):
+    hub_id: str
+    plate: str  # Matrícula
+    vehicle_type: str  # Tipo de vehículo
+
+class VehicleUpdate(BaseModel):
+    plate: Optional[str] = None
+    vehicle_type: Optional[str] = None
+
+class VehicleResponse(BaseModel):
+    id: str
+    hub_id: str
+    plate: str
+    vehicle_type: str
+    created_at: str
+
+class IncidentCreate(BaseModel):
+    vehicle_id: str
+    hub_id: str
+    title: str
+    description: Optional[str] = ""
+    date: str  # Format: DD/MM/YYYY or YYYY-MM-DD
+    cost: float = 0
+    km: int = 0
+
+class IncidentUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    date: Optional[str] = None
+    cost: Optional[float] = None
+    km: Optional[int] = None
+
+class IncidentResponse(BaseModel):
+    id: str
+    vehicle_id: str
+    hub_id: str
+    title: str
+    description: str
+    date: str
+    cost: float
+    km: int
+    created_at: str
+
 # ==================== HELPERS ====================
 
 def hash_password(password: str) -> str:
