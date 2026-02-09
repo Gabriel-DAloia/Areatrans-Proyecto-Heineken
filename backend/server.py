@@ -7,12 +7,13 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 from passlib.context import CryptContext
 import base64
+import calendar
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -77,33 +78,41 @@ class HubResponse(BaseModel):
     location: str
     created_at: str
 
-class CategoryType(BaseModel):
-    name: str
-    icon: str
-
-class RecordCreate(BaseModel):
+class EmployeeCreate(BaseModel):
     hub_id: str
-    category: str
-    title: str
-    description: Optional[str] = ""
-    data: Optional[dict] = {}
+    name: str
+    position: Optional[str] = ""
 
-class RecordUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    data: Optional[dict] = None
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    position: Optional[str] = None
 
-class RecordResponse(BaseModel):
+class EmployeeResponse(BaseModel):
     id: str
     hub_id: str
-    category: str
-    title: str
-    description: str
-    data: dict
-    file_name: Optional[str] = None
-    file_data: Optional[str] = None
+    name: str
+    position: str
     created_at: str
-    updated_at: str
+
+class AttendanceEntry(BaseModel):
+    employee_id: str
+    hub_id: str
+    date: str  # Format: YYYY-MM-DD
+    status: str  # 1, D, IN, E, O
+    extra_hours: Optional[float] = 0
+    diet: Optional[int] = 0  # 1 or 0
+
+class AttendanceBulkUpdate(BaseModel):
+    entries: List[AttendanceEntry]
+
+class AttendanceResponse(BaseModel):
+    id: str
+    employee_id: str
+    hub_id: str
+    date: str
+    status: str
+    extra_hours: float
+    diet: int
 
 # ==================== HELPERS ====================
 
@@ -193,12 +202,10 @@ async def startup_event():
 
 @api_router.post("/auth/register", response_model=dict)
 async def register(user_data: UserCreate):
-    # Check if email exists
     existing = await db.users.find_one({"email": user_data.email})
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
     
-    # Create user
     user = {
         "id": str(uuid.uuid4()),
         "email": user_data.email,
@@ -317,6 +324,19 @@ async def get_hubs(current_user: dict = Depends(get_current_user)):
         created_at=h["created_at"]
     ) for h in hubs]
 
+@api_router.get("/hubs/{hub_id}", response_model=HubResponse)
+async def get_hub(hub_id: str, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id}, {"_id": 0})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    return HubResponse(
+        id=hub["id"],
+        name=hub["name"],
+        description=hub.get("description", ""),
+        location=hub.get("location", ""),
+        created_at=hub["created_at"]
+    )
+
 @api_router.post("/hubs", response_model=HubResponse)
 async def create_hub(hub_data: HubCreate, admin: dict = Depends(get_admin_user)):
     hub = {
@@ -359,66 +379,258 @@ async def delete_hub(hub_id: str, admin: dict = Depends(get_admin_user)):
     result = await db.hubs.delete_one({"id": hub_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Hub no encontrado")
-    # Also delete related records
+    # Also delete related data
+    await db.employees.delete_many({"hub_id": hub_id})
+    await db.attendance.delete_many({"hub_id": hub_id})
     await db.records.delete_many({"hub_id": hub_id})
     return {"message": "Hub eliminado correctamente"}
+
+# ==================== EMPLOYEE ROUTES ====================
+
+@api_router.get("/hubs/{hub_id}/employees", response_model=List[EmployeeResponse])
+async def get_employees(hub_id: str, current_user: dict = Depends(get_current_user)):
+    employees = await db.employees.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    return [EmployeeResponse(
+        id=e["id"],
+        hub_id=e["hub_id"],
+        name=e["name"],
+        position=e.get("position", ""),
+        created_at=e["created_at"]
+    ) for e in employees]
+
+@api_router.post("/hubs/{hub_id}/employees", response_model=EmployeeResponse)
+async def create_employee(hub_id: str, employee_data: EmployeeCreate, admin: dict = Depends(get_admin_user)):
+    # Verify hub exists
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    employee = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "name": employee_data.name,
+        "position": employee_data.position or "",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.employees.insert_one(employee)
+    return EmployeeResponse(
+        id=employee["id"],
+        hub_id=employee["hub_id"],
+        name=employee["name"],
+        position=employee["position"],
+        created_at=employee["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/employees/{employee_id}", response_model=EmployeeResponse)
+async def update_employee(hub_id: str, employee_id: str, employee_data: EmployeeUpdate, admin: dict = Depends(get_admin_user)):
+    update_data = {k: v for k, v in employee_data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.employees.update_one(
+        {"id": employee_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    
+    employee = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    return EmployeeResponse(
+        id=employee["id"],
+        hub_id=employee["hub_id"],
+        name=employee["name"],
+        position=employee.get("position", ""),
+        created_at=employee["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/employees/{employee_id}")
+async def delete_employee(hub_id: str, employee_id: str, admin: dict = Depends(get_admin_user)):
+    result = await db.employees.delete_one({"id": employee_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    # Also delete attendance records
+    await db.attendance.delete_many({"employee_id": employee_id})
+    return {"message": "Empleado eliminado correctamente"}
+
+# ==================== ATTENDANCE ROUTES ====================
+
+@api_router.get("/hubs/{hub_id}/attendance")
+async def get_attendance(
+    hub_id: str,
+    year: int,
+    month: int,
+    current_user: dict = Depends(get_current_user)
+):
+    # Get all attendance for the hub in the specified month
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    attendance = await db.attendance.find({
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Get employees for this hub
+    employees = await db.employees.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    
+    # Build attendance matrix
+    attendance_map = {}
+    for a in attendance:
+        key = f"{a['employee_id']}_{a['date']}"
+        attendance_map[key] = {
+            "status": a.get("status", ""),
+            "extra_hours": a.get("extra_hours", 0),
+            "diet": a.get("diet", 0)
+        }
+    
+    return {
+        "employees": employees,
+        "attendance": attendance_map,
+        "year": year,
+        "month": month,
+        "days_in_month": last_day
+    }
+
+@api_router.post("/hubs/{hub_id}/attendance")
+async def save_attendance(
+    hub_id: str,
+    data: AttendanceBulkUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    # Process each entry
+    for entry in data.entries:
+        existing = await db.attendance.find_one({
+            "employee_id": entry.employee_id,
+            "hub_id": hub_id,
+            "date": entry.date
+        })
+        
+        attendance_doc = {
+            "employee_id": entry.employee_id,
+            "hub_id": hub_id,
+            "date": entry.date,
+            "status": entry.status,
+            "extra_hours": entry.extra_hours or 0,
+            "diet": entry.diet or 0
+        }
+        
+        if existing:
+            await db.attendance.update_one(
+                {"_id": existing["_id"]},
+                {"$set": attendance_doc}
+            )
+        else:
+            attendance_doc["id"] = str(uuid.uuid4())
+            await db.attendance.insert_one(attendance_doc)
+    
+    return {"message": "Asistencia guardada correctamente", "count": len(data.entries)}
+
+@api_router.get("/hubs/{hub_id}/attendance/summary")
+async def get_attendance_summary(
+    hub_id: str,
+    year: int,
+    month: int,
+    current_user: dict = Depends(get_current_user)
+):
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    # Get employees
+    employees = await db.employees.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    
+    # Get attendance
+    attendance = await db.attendance.find({
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Calculate summary per employee
+    summary = []
+    for emp in employees:
+        emp_attendance = [a for a in attendance if a["employee_id"] == emp["id"]]
+        
+        days_worked = sum(1 for a in emp_attendance if a.get("status") == "1")
+        days_rest = sum(1 for a in emp_attendance if a.get("status") == "D")
+        days_absent = sum(1 for a in emp_attendance if a.get("status") == "IN")
+        days_sick = sum(1 for a in emp_attendance if a.get("status") == "E")
+        days_other = sum(1 for a in emp_attendance if a.get("status") == "O")
+        total_extra_hours = sum(a.get("extra_hours", 0) for a in emp_attendance)
+        total_diets = sum(1 for a in emp_attendance if a.get("diet") == 1)
+        
+        summary.append({
+            "employee_id": emp["id"],
+            "employee_name": emp["name"],
+            "days_worked": days_worked,
+            "days_rest": days_rest,
+            "days_absent": days_absent,
+            "days_sick": days_sick,
+            "days_other": days_other,
+            "total_extra_hours": total_extra_hours,
+            "total_diets": total_diets
+        })
+    
+    return {
+        "summary": summary,
+        "year": year,
+        "month": month
+    }
 
 # ==================== CATEGORIES ====================
 
 CATEGORIES = [
-    {"name": "Asistencias", "icon": "Wrench"},
-    {"name": "Liquidaciones", "icon": "Banknote"},
-    {"name": "Flota", "icon": "Truck"},
-    {"name": "Historico de incidencias", "icon": "History"},
-    {"name": "Repartos", "icon": "Package"},
-    {"name": "Compras", "icon": "ShoppingCart"},
-    {"name": "Kilos/Litros", "icon": "Scale"},
-    {"name": "Contactos", "icon": "Users"}
+    {"name": "Asistencias", "icon": "Wrench", "route": "asistencias"},
+    {"name": "Liquidaciones", "icon": "Banknote", "route": "liquidaciones"},
+    {"name": "Flota", "icon": "Truck", "route": "flota"},
+    {"name": "Historico de incidencias", "icon": "History", "route": "historico-incidencias"},
+    {"name": "Repartos", "icon": "Package", "route": "repartos"},
+    {"name": "Compras", "icon": "ShoppingCart", "route": "compras"},
+    {"name": "Kilos/Litros", "icon": "Scale", "route": "kilos-litros"},
+    {"name": "Contactos", "icon": "Users", "route": "contactos"}
 ]
 
-@api_router.get("/categories", response_model=List[CategoryType])
+@api_router.get("/categories")
 async def get_categories(current_user: dict = Depends(get_current_user)):
     return CATEGORIES
 
-# ==================== RECORDS ====================
+# ==================== GENERIC RECORDS (for other categories) ====================
 
-@api_router.get("/records", response_model=List[RecordResponse])
-async def get_records(
-    hub_id: Optional[str] = None,
+class RecordCreate(BaseModel):
+    hub_id: str
+    category: str
+    title: str
+    description: Optional[str] = ""
+    data: Optional[dict] = {}
+
+class RecordUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    data: Optional[dict] = None
+
+@api_router.get("/hubs/{hub_id}/records")
+async def get_hub_records(
+    hub_id: str,
     category: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
-    if hub_id:
-        query["hub_id"] = hub_id
+    query = {"hub_id": hub_id}
     if category:
         query["category"] = category
     
     records = await db.records.find(query, {"_id": 0}).to_list(1000)
-    return [RecordResponse(
-        id=r["id"],
-        hub_id=r["hub_id"],
-        category=r["category"],
-        title=r["title"],
-        description=r.get("description", ""),
-        data=r.get("data", {}),
-        file_name=r.get("file_name"),
-        file_data=r.get("file_data"),
-        created_at=r["created_at"],
-        updated_at=r.get("updated_at", r["created_at"])
-    ) for r in records]
+    return records
 
-@api_router.post("/records", response_model=RecordResponse)
-async def create_record(record_data: RecordCreate, current_user: dict = Depends(get_current_user)):
-    # Verify hub exists
-    hub = await db.hubs.find_one({"id": record_data.hub_id})
+@api_router.post("/hubs/{hub_id}/records")
+async def create_hub_record(hub_id: str, record_data: RecordCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
     if not hub:
         raise HTTPException(status_code=404, detail="Hub no encontrado")
     
     now = datetime.now(timezone.utc).isoformat()
     record = {
         "id": str(uuid.uuid4()),
-        "hub_id": record_data.hub_id,
+        "hub_id": hub_id,
         "category": record_data.category,
         "title": record_data.title,
         "description": record_data.description,
@@ -429,96 +641,44 @@ async def create_record(record_data: RecordCreate, current_user: dict = Depends(
     }
     
     await db.records.insert_one(record)
-    return RecordResponse(
-        id=record["id"],
-        hub_id=record["hub_id"],
-        category=record["category"],
-        title=record["title"],
-        description=record.get("description", ""),
-        data=record.get("data", {}),
-        file_name=record.get("file_name"),
-        file_data=record.get("file_data"),
-        created_at=record["created_at"],
-        updated_at=record["updated_at"]
-    )
+    return record
 
-@api_router.put("/records/{record_id}", response_model=RecordResponse)
-async def update_record(record_id: str, record_data: RecordUpdate, current_user: dict = Depends(get_current_user)):
+@api_router.put("/hubs/{hub_id}/records/{record_id}")
+async def update_hub_record(hub_id: str, record_id: str, record_data: RecordUpdate, current_user: dict = Depends(get_current_user)):
     update_data = {k: v for k, v in record_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    result = await db.records.update_one({"id": record_id}, {"$set": update_data})
+    result = await db.records.update_one(
+        {"id": record_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     
     record = await db.records.find_one({"id": record_id}, {"_id": 0})
-    return RecordResponse(
-        id=record["id"],
-        hub_id=record["hub_id"],
-        category=record["category"],
-        title=record["title"],
-        description=record.get("description", ""),
-        data=record.get("data", {}),
-        file_name=record.get("file_name"),
-        file_data=record.get("file_data"),
-        created_at=record["created_at"],
-        updated_at=record.get("updated_at", record["created_at"])
-    )
+    return record
 
-@api_router.delete("/records/{record_id}")
-async def delete_record(record_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.records.delete_one({"id": record_id})
+@api_router.delete("/hubs/{hub_id}/records/{record_id}")
+async def delete_hub_record(hub_id: str, record_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.records.delete_one({"id": record_id, "hub_id": hub_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     return {"message": "Registro eliminado correctamente"}
-
-@api_router.post("/records/{record_id}/upload")
-async def upload_file_to_record(
-    record_id: str,
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
-):
-    # Verify record exists
-    record = await db.records.find_one({"id": record_id})
-    if not record:
-        raise HTTPException(status_code=404, detail="Registro no encontrado")
-    
-    # Read and encode file
-    file_content = await file.read()
-    file_base64 = base64.b64encode(file_content).decode('utf-8')
-    
-    await db.records.update_one(
-        {"id": record_id},
-        {"$set": {
-            "file_name": file.filename,
-            "file_data": file_base64,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    return {"message": "Archivo subido correctamente", "file_name": file.filename}
 
 # ==================== STATS ====================
 
 @api_router.get("/stats")
 async def get_stats(current_user: dict = Depends(get_current_user)):
     total_hubs = await db.hubs.count_documents({})
-    total_records = await db.records.count_documents({})
+    total_employees = await db.employees.count_documents({})
     total_users = await db.users.count_documents({})
     pending_users = await db.users.count_documents({"is_approved": False})
     
-    # Records per category
-    pipeline = [
-        {"$group": {"_id": "$category", "count": {"$sum": 1}}}
-    ]
-    category_stats = await db.records.aggregate(pipeline).to_list(100)
-    
     return {
         "total_hubs": total_hubs,
-        "total_records": total_records,
+        "total_employees": total_employees,
         "total_users": total_users,
-        "pending_users": pending_users,
-        "records_by_category": {item["_id"]: item["count"] for item in category_stats}
+        "pending_users": pending_users
     }
 
 # Include router
