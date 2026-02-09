@@ -234,6 +234,132 @@ class HubManagerAPITester:
             self.log_test("Update Hub", False, f"Status: {status_code}", response)
             return False
 
+    # EMPLOYEE TESTS
+    def test_get_employees(self):
+        """Test getting employees for a hub"""
+        if not self.admin_token or not self.test_hub_id:
+            self.log_test("Get Employees", False, "Missing admin token or hub ID")
+            return False
+            
+        status_code, response = self.make_request('GET', f'hubs/{self.test_hub_id}/employees', token=self.admin_token)
+        
+        if status_code == 200 and isinstance(response, list):
+            self.log_test("Get Employees", True, f"Found {len(response)} employees in hub", {"count": len(response)})
+            return True
+        else:
+            self.log_test("Get Employees", False, f"Status: {status_code}", response)
+            return False
+
+    def test_create_employee(self):
+        """Test creating an employee"""
+        if not self.admin_token or not self.test_hub_id:
+            self.log_test("Create Employee", False, "Missing admin token or hub ID")
+            return False
+            
+        status_code, response = self.make_request('POST', f'hubs/{self.test_hub_id}/employees', {
+            "hub_id": self.test_hub_id,
+            "name": f"Test Employee {datetime.now().strftime('%H%M%S')}",
+            "position": "Test Position"
+        }, token=self.admin_token)
+        
+        if status_code == 200 and "id" in response:
+            self.test_employee_id = response["id"]
+            self.log_test("Create Employee", True, f"Created employee: {response.get('name')}", response)
+            return True
+        else:
+            self.log_test("Create Employee", False, f"Status: {status_code}", response)
+            return False
+
+    def test_update_employee(self):
+        """Test updating an employee"""
+        if not self.admin_token or not self.test_hub_id or not self.test_employee_id:
+            self.log_test("Update Employee", False, "Missing admin token, hub ID, or employee ID")
+            return False
+            
+        status_code, response = self.make_request('PUT', f'hubs/{self.test_hub_id}/employees/{self.test_employee_id}', {
+            "name": "Test Employee Updated",
+            "position": "Updated Position"
+        }, token=self.admin_token)
+        
+        if status_code == 200 and "name" in response:
+            self.log_test("Update Employee", True, f"Updated employee: {response.get('name')}", response)
+            return True
+        else:
+            self.log_test("Update Employee", False, f"Status: {status_code}", response)
+            return False
+
+    # ATTENDANCE TESTS
+    def test_get_attendance(self):
+        """Test getting attendance data"""
+        if not self.admin_token or not self.test_hub_id:
+            self.log_test("Get Attendance", False, "Missing admin token or hub ID")
+            return False
+            
+        current_date = datetime.now()
+        status_code, response = self.make_request('GET', f'hubs/{self.test_hub_id}/attendance', {
+            "year": current_date.year,
+            "month": current_date.month
+        }, token=self.admin_token)
+        
+        if status_code == 200 and "employees" in response and "attendance" in response:
+            employees_count = len(response.get("employees", []))
+            self.log_test("Get Attendance", True, f"Retrieved attendance data for {employees_count} employees", 
+                         {"employees_count": employees_count, "year": response.get("year"), "month": response.get("month")})
+            return True
+        else:
+            self.log_test("Get Attendance", False, f"Status: {status_code}", response)
+            return False
+
+    def test_save_attendance(self):
+        """Test saving attendance data"""
+        if not self.admin_token or not self.test_hub_id or not self.test_employee_id:
+            self.log_test("Save Attendance", False, "Missing admin token, hub ID, or employee ID")
+            return False
+            
+        current_date = datetime.now()
+        test_date = f"{current_date.year}-{current_date.month:02d}-{current_date.day:02d}"
+        
+        status_code, response = self.make_request('POST', f'hubs/{self.test_hub_id}/attendance', {
+            "entries": [
+                {
+                    "employee_id": self.test_employee_id,
+                    "hub_id": self.test_hub_id,
+                    "date": test_date,
+                    "status": "1",
+                    "extra_hours": 2.5,
+                    "diet": 1
+                }
+            ]
+        }, token=self.admin_token)
+        
+        if status_code == 200 and "message" in response:
+            self.log_test("Save Attendance", True, f"Saved attendance: {response.get('message')}", response)
+            return True
+        else:
+            self.log_test("Save Attendance", False, f"Status: {status_code}", response)
+            return False
+
+    def test_get_attendance_summary(self):
+        """Test getting attendance summary"""
+        if not self.admin_token or not self.test_hub_id:
+            self.log_test("Get Attendance Summary", False, "Missing admin token or hub ID")
+            return False
+            
+        current_date = datetime.now()
+        status_code, response = self.make_request('GET', f'hubs/{self.test_hub_id}/attendance/summary', {
+            "year": current_date.year,
+            "month": current_date.month
+        }, token=self.admin_token)
+        
+        if status_code == 200 and "summary" in response:
+            summary_count = len(response.get("summary", []))
+            self.log_test("Get Attendance Summary", True, f"Retrieved summary for {summary_count} employees", 
+                         {"summary_count": summary_count, "year": response.get("year"), "month": response.get("month")})
+            return True
+        else:
+            self.log_test("Get Attendance Summary", False, f"Status: {status_code}", response)
+            return False
+
     # CATEGORY TESTS
     def test_get_categories(self):
         """Test getting categories"""
