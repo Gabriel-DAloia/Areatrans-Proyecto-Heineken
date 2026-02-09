@@ -15,6 +15,7 @@ import HistoricoIncidencias from './pages/HistoricoIncidencias';
 import Liquidaciones from './pages/Liquidaciones';
 import Compras from './pages/Compras';
 import Contactos from './pages/Contactos';
+import KilosLitros from './pages/KilosLitros';
 import CategoryGeneric from './pages/CategoryGeneric';
 import './App.css';
 
