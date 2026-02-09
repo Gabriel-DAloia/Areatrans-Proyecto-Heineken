@@ -31,7 +31,7 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
 - Debe ser aprobado por admin para acceder
 - Puede ver hubs y categorías
 - Puede registrar asistencias y datos
-- Puede exportar a Excel
+- Puede exportar a Excel/CSV
 
 ## Core Requirements (Estáticos)
 
@@ -55,9 +55,18 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
    - Resumen automático mensual
    - Exportación a Excel
 
-## What's Been Implemented (09/02/2026)
+4. **Kilos/Litros**
+   - Registro diario por ruta y repartidor
+   - Campos: fecha, ruta, repartidor, clientes, kilos, litros, bultos
+   - Resumen mensual total
+   - Resumen por repartidor
+   - Resumen por ruta
+   - Historial del mes
+   - Exportación CSV
 
-### ✅ Completado
+## What's Been Implemented
+
+### ✅ Completado (09/02/2026)
 - [x] Sistema de autenticación JWT
 - [x] Usuario admin por defecto
 - [x] Registro con aprobación pendiente
@@ -72,30 +81,43 @@ Crear una aplicación con React y FastAPI para gestión de Hubs logísticos con:
   - [x] Navegación por mes
   - [x] Resumen mensual
   - [x] Exportación a Excel
-- [x] Categorías genéricas (Liquidaciones, Flota, etc.) con CRUD básico
+- [x] Flota - Gestión de vehículos por hub
+- [x] Histórico de Incidencias - Por vehículo con costos
+- [x] Compras - Lista de compras con precios
+- [x] Contactos - Lista de contactos
+- [x] Liquidaciones - Control por ruta con descuadres
+  - [x] CRUD de rutas
+  - [x] Entradas diarias (metálico/ingreso)
+  - [x] Resumen por repartidor
+  - [x] Resumen por ruta
+- [x] **Kilos/Litros** (NUEVO - 09/02/2026)
+  - [x] Registro diario con día, ruta, nombre, clientes, kilos, litros, bultos
+  - [x] Resumen mensual con 4 tarjetas
+  - [x] Tab "Por Repartidor" con agregación
+  - [x] Tab "Por Ruta" con agregación
+  - [x] Tab "Historial del Mes"
+  - [x] Exportación CSV
+  - [x] Navegación por mes
 - [x] Diseño responsive con sidebar colapsable
 
 ### ⏳ Pendiente (Backlog)
-- [ ] Funcionalidad específica para Liquidaciones
-- [ ] Funcionalidad específica para Flota
-- [ ] Funcionalidad específica para Histórico de incidencias
 - [ ] Funcionalidad específica para Repartos
-- [ ] Funcionalidad específica para Compras
-- [ ] Funcionalidad específica para Kilos/Litros
-- [ ] Funcionalidad específica para Contactos
 - [ ] Subida de archivos a registros
 - [ ] Notificaciones al aprobar usuarios
 - [ ] Dashboard con gráficos
+- [ ] Finalizar exportación Excel para Asistencias
 
 ## Prioridad Features
 
 ### P0 (Crítico) ✅
 - Autenticación
 - Sistema de Asistencias
+- Kilos/Litros
 
-### P1 (Alto)
+### P1 (Alto) ✅
 - Liquidaciones con campos específicos
 - Flota con registro de vehículos
+- Histórico de Incidencias
 
 ### P2 (Medio)
 - Repartos con tracking
@@ -131,7 +153,25 @@ Admin: admin@admin.com / admin123
 - POST /api/hubs/{hubId}/attendance
 - GET /api/hubs/{hubId}/attendance/summary
 
+### Routes (shared by Liquidaciones and Kilos/Litros)
+- GET /api/hubs/{hubId}/routes
+- POST /api/hubs/{hubId}/routes
+- DELETE /api/hubs/{hubId}/routes/{routeId}
+
+### Liquidaciones
+- GET /api/hubs/{hubId}/liquidations?year=YYYY&month=MM
+- POST /api/hubs/{hubId}/liquidations
+- POST /api/hubs/{hubId}/liquidations/bulk
+- GET /api/hubs/{hubId}/liquidations/summary
+
+### Kilos/Litros
+- GET /api/hubs/{hubId}/kilos-litros?year=YYYY&month=MM
+- POST /api/hubs/{hubId}/kilos-litros
+- POST /api/hubs/{hubId}/kilos-litros/bulk
+- DELETE /api/hubs/{hubId}/kilos-litros/{entryId}
+- GET /api/hubs/{hubId}/kilos-litros/summary
+
 ## Next Tasks
-1. Implementar funcionalidad específica para cada categoría según requisitos del usuario
+1. Implementar funcionalidad específica para Repartos (pendiente especificaciones del usuario)
 2. Agregar gráficos de estadísticas en el dashboard
 3. Mejorar sistema de exportación con más formatos
