@@ -209,6 +209,44 @@ class ContactResponse(BaseModel):
     phone: str
     created_at: str
 
+# Liquidation models (routes and daily entries)
+class RouteCreate(BaseModel):
+    hub_id: str
+    name: str  # e.g., "005", "103", "143"
+
+class RouteResponse(BaseModel):
+    id: str
+    hub_id: str
+    name: str
+    created_at: str
+
+class LiquidationEntryCreate(BaseModel):
+    route_id: str
+    hub_id: str
+    date: str  # YYYY-MM-DD
+    repartidor: str  # lowercase enforced
+    metalico: float = 0
+    ingreso: float = 0
+    comentario: Optional[str] = ""
+
+class LiquidationEntryUpdate(BaseModel):
+    repartidor: Optional[str] = None
+    metalico: Optional[float] = None
+    ingreso: Optional[float] = None
+    comentario: Optional[str] = None
+
+class LiquidationEntryResponse(BaseModel):
+    id: str
+    route_id: str
+    hub_id: str
+    date: str
+    repartidor: str
+    metalico: float
+    ingreso: float
+    diferencia: float
+    comentario: str
+    created_at: str
+
 # ==================== HELPERS ====================
 
 def hash_password(password: str) -> str:
