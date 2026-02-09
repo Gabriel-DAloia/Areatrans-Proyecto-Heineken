@@ -428,9 +428,9 @@ class HubManagerAPITester:
             
         status_code, response = self.make_request('GET', 'stats', token=self.admin_token)
         
-        expected_keys = ["total_hubs", "total_records", "total_users", "pending_users"]
+        expected_keys = ["total_hubs", "total_employees", "total_users", "pending_users"]
         if status_code == 200 and all(key in response for key in expected_keys):
-            self.log_test("Get Stats", True, f"Stats: Hubs={response.get('total_hubs')}, Records={response.get('total_records')}", response)
+            self.log_test("Get Stats", True, f"Stats: Hubs={response.get('total_hubs')}, Employees={response.get('total_employees')}", response)
             return True
         else:
             self.log_test("Get Stats", False, f"Status: {status_code}", response)
