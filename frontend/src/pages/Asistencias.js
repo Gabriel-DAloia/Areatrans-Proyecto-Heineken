@@ -47,6 +47,13 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
+const DAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+const getDayName = (year, month, day) => {
+  const date = new Date(year, month - 1, day);
+  return DAYS_SHORT[date.getDay()];
+};
+
 const STATUS_OPTIONS = [
   { value: '1', label: '1 - Trabajado', color: 'bg-emerald-100 text-emerald-700' },
   { value: 'D', label: 'D - Descanso', color: 'bg-blue-100 text-blue-700' },
