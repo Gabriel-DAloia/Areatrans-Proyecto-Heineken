@@ -31,7 +31,9 @@ const categoryConfig = [
   { name: 'Repartos', icon: Package, route: 'repartos', color: 'bg-orange-500', description: 'Gestión de repartos' },
   { name: 'Compras', icon: ShoppingCart, route: 'compras', color: 'bg-purple-500', description: 'Control de compras' },
   { name: 'Kilos/Litros', icon: Scale, route: 'kilos-litros', color: 'bg-cyan-500', description: 'Registro de cantidades' },
-  { name: 'Contactos', icon: Users, route: 'contactos', color: 'bg-pink-500', description: 'Directorio de contactos' }
+  { name: 'Contactos', icon: Users, route: 'contactos', color: 'bg-pink-500', description: 'Directorio de contactos' },
+  { name: 'Días Festivos', icon: Calendar, route: 'dias-festivos', color: 'bg-red-500', description: 'Calendario de festivos' },
+  { name: 'Restricciones Horarias', icon: Clock, route: 'restricciones-horarias', color: 'bg-violet-500', description: 'Restricciones de circulación' }
 ];
 
 const HubDetail = () => {
