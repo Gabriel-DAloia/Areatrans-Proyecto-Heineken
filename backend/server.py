@@ -1104,6 +1104,302 @@ async def delete_contact(hub_id: str, contact_id: str, current_user: dict = Depe
         raise HTTPException(status_code=404, detail="Contacto no encontrado")
     return {"message": "Contacto eliminado correctamente"}
 
+# ==================== LIQUIDATION ROUTES ====================
+
+@api_router.get("/hubs/{hub_id}/routes")
+async def get_routes(hub_id: str, current_user: dict = Depends(get_current_user)):
+    routes = await db.routes.find({"hub_id": hub_id}, {"_id": 0}).sort("name", 1).to_list(500)
+    return [RouteResponse(
+        id=r["id"],
+        hub_id=r["hub_id"],
+        name=r["name"],
+        created_at=r["created_at"]
+    ) for r in routes]
+
+@api_router.post("/hubs/{hub_id}/routes", response_model=RouteResponse)
+async def create_route(hub_id: str, route_data: RouteCreate, current_user: dict = Depends(get_current_user)):
+    hub = await db.hubs.find_one({"id": hub_id})
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub no encontrado")
+    
+    # Check if route already exists
+    existing = await db.routes.find_one({"hub_id": hub_id, "name": route_data.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="La ruta ya existe")
+    
+    route = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub_id,
+        "name": route_data.name,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.routes.insert_one(route)
+    return RouteResponse(
+        id=route["id"],
+        hub_id=route["hub_id"],
+        name=route["name"],
+        created_at=route["created_at"]
+    )
+
+@api_router.delete("/hubs/{hub_id}/routes/{route_id}")
+async def delete_route(hub_id: str, route_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.routes.delete_one({"id": route_id, "hub_id": hub_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    # Also delete related liquidation entries
+    await db.liquidations.delete_many({"route_id": route_id})
+    return {"message": "Ruta eliminada correctamente"}
+
+@api_router.get("/hubs/{hub_id}/liquidations")
+async def get_liquidations(
+    hub_id: str,
+    year: int,
+    month: int,
+    route_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    # Build date range
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    query = {
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }
+    if route_id:
+        query["route_id"] = route_id
+    
+    entries = await db.liquidations.find(query, {"_id": 0}).sort("date", 1).to_list(10000)
+    
+    return [LiquidationEntryResponse(
+        id=e["id"],
+        route_id=e["route_id"],
+        hub_id=e["hub_id"],
+        date=e["date"],
+        repartidor=e.get("repartidor", ""),
+        metalico=e.get("metalico", 0),
+        ingreso=e.get("ingreso", 0),
+        diferencia=e.get("metalico", 0) - e.get("ingreso", 0),
+        comentario=e.get("comentario", ""),
+        created_at=e["created_at"]
+    ) for e in entries]
+
+@api_router.post("/hubs/{hub_id}/liquidations", response_model=LiquidationEntryResponse)
+async def create_liquidation_entry(hub_id: str, entry_data: LiquidationEntryCreate, current_user: dict = Depends(get_current_user)):
+    # Verify route exists
+    route = await db.routes.find_one({"id": entry_data.route_id, "hub_id": hub_id})
+    if not route:
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+    
+    # Enforce lowercase for repartidor
+    repartidor = entry_data.repartidor.lower() if entry_data.repartidor else ""
+    
+    # Check if entry already exists for this date and route
+    existing = await db.liquidations.find_one({
+        "route_id": entry_data.route_id,
+        "date": entry_data.date
+    })
+    
+    metalico = entry_data.metalico or 0
+    ingreso = entry_data.ingreso or 0
+    
+    if existing:
+        # Update existing entry
+        await db.liquidations.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "repartidor": repartidor,
+                "metalico": metalico,
+                "ingreso": ingreso,
+                "comentario": entry_data.comentario or ""
+            }}
+        )
+        entry = await db.liquidations.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        # Create new entry
+        entry = {
+            "id": str(uuid.uuid4()),
+            "route_id": entry_data.route_id,
+            "hub_id": hub_id,
+            "date": entry_data.date,
+            "repartidor": repartidor,
+            "metalico": metalico,
+            "ingreso": ingreso,
+            "comentario": entry_data.comentario or "",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.liquidations.insert_one(entry)
+    
+    return LiquidationEntryResponse(
+        id=entry["id"],
+        route_id=entry["route_id"],
+        hub_id=entry["hub_id"],
+        date=entry["date"],
+        repartidor=entry.get("repartidor", ""),
+        metalico=entry.get("metalico", 0),
+        ingreso=entry.get("ingreso", 0),
+        diferencia=entry.get("metalico", 0) - entry.get("ingreso", 0),
+        comentario=entry.get("comentario", ""),
+        created_at=entry["created_at"]
+    )
+
+@api_router.put("/hubs/{hub_id}/liquidations/{entry_id}")
+async def update_liquidation_entry(hub_id: str, entry_id: str, entry_data: LiquidationEntryUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {}
+    
+    if entry_data.repartidor is not None:
+        update_data["repartidor"] = entry_data.repartidor.lower()
+    if entry_data.metalico is not None:
+        update_data["metalico"] = entry_data.metalico
+    if entry_data.ingreso is not None:
+        update_data["ingreso"] = entry_data.ingreso
+    if entry_data.comentario is not None:
+        update_data["comentario"] = entry_data.comentario
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    result = await db.liquidations.update_one(
+        {"id": entry_id, "hub_id": hub_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Entrada no encontrada")
+    
+    entry = await db.liquidations.find_one({"id": entry_id}, {"_id": 0})
+    return LiquidationEntryResponse(
+        id=entry["id"],
+        route_id=entry["route_id"],
+        hub_id=entry["hub_id"],
+        date=entry["date"],
+        repartidor=entry.get("repartidor", ""),
+        metalico=entry.get("metalico", 0),
+        ingreso=entry.get("ingreso", 0),
+        diferencia=entry.get("metalico", 0) - entry.get("ingreso", 0),
+        comentario=entry.get("comentario", ""),
+        created_at=entry["created_at"]
+    )
+
+@api_router.post("/hubs/{hub_id}/liquidations/bulk")
+async def save_liquidations_bulk(hub_id: str, entries: List[LiquidationEntryCreate], current_user: dict = Depends(get_current_user)):
+    saved_count = 0
+    for entry_data in entries:
+        repartidor = entry_data.repartidor.lower() if entry_data.repartidor else ""
+        metalico = entry_data.metalico or 0
+        ingreso = entry_data.ingreso or 0
+        
+        existing = await db.liquidations.find_one({
+            "route_id": entry_data.route_id,
+            "date": entry_data.date
+        })
+        
+        if existing:
+            await db.liquidations.update_one(
+                {"id": existing["id"]},
+                {"$set": {
+                    "repartidor": repartidor,
+                    "metalico": metalico,
+                    "ingreso": ingreso,
+                    "comentario": entry_data.comentario or ""
+                }}
+            )
+        else:
+            entry = {
+                "id": str(uuid.uuid4()),
+                "route_id": entry_data.route_id,
+                "hub_id": hub_id,
+                "date": entry_data.date,
+                "repartidor": repartidor,
+                "metalico": metalico,
+                "ingreso": ingreso,
+                "comentario": entry_data.comentario or "",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.liquidations.insert_one(entry)
+        saved_count += 1
+    
+    return {"message": f"Guardadas {saved_count} entradas", "count": saved_count}
+
+@api_router.get("/hubs/{hub_id}/liquidations/summary")
+async def get_liquidations_summary(
+    hub_id: str,
+    year: int,
+    month: int,
+    current_user: dict = Depends(get_current_user)
+):
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day}"
+    
+    # Get all routes for this hub
+    routes = await db.routes.find({"hub_id": hub_id}, {"_id": 0}).to_list(500)
+    
+    # Get all liquidation entries for the month
+    entries = await db.liquidations.find({
+        "hub_id": hub_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Summary by repartidor
+    repartidor_summary = {}
+    for entry in entries:
+        rep = entry.get("repartidor", "").lower()
+        if rep:
+            if rep not in repartidor_summary:
+                repartidor_summary[rep] = {"total": 0, "entries": []}
+            diferencia = entry.get("metalico", 0) - entry.get("ingreso", 0)
+            repartidor_summary[rep]["total"] += diferencia
+            if diferencia != 0:
+                repartidor_summary[rep]["entries"].append({
+                    "date": entry["date"],
+                    "route_id": entry["route_id"],
+                    "diferencia": diferencia
+                })
+    
+    # Summary by route
+    route_summary = []
+    for route in routes:
+        route_entries = [e for e in entries if e.get("route_id") == route["id"]]
+        total_metalico = sum(e.get("metalico", 0) for e in route_entries)
+        total_ingreso = sum(e.get("ingreso", 0) for e in route_entries)
+        descuadre = total_metalico - total_ingreso
+        
+        # Get descuadres detectados (entries with diferencia != 0)
+        descuadres = []
+        for e in route_entries:
+            dif = e.get("metalico", 0) - e.get("ingreso", 0)
+            if dif != 0:
+                descuadres.append({
+                    "date": e["date"],
+                    "repartidor": e.get("repartidor", ""),
+                    "diferencia": dif
+                })
+        
+        route_summary.append({
+            "route_id": route["id"],
+            "route_name": route["name"],
+            "total_metalico": total_metalico,
+            "total_ingreso": total_ingreso,
+            "descuadre": descuadre,
+            "descuadres_detectados": descuadres
+        })
+    
+    return {
+        "year": year,
+        "month": month,
+        "by_repartidor": [
+            {
+                "repartidor": rep,
+                "total": data["total"],
+                "estado": f"debe depositar {data['total']:.2f} €" if data["total"] > 0 else f"a favor {abs(data['total']):.2f} €" if data["total"] < 0 else "sin descuadre",
+                "entries": data["entries"]
+            }
+            for rep, data in repartidor_summary.items()
+        ],
+        "by_route": route_summary
+    }
+
 # ==================== CATEGORIES ====================
 
 CATEGORIES = [
